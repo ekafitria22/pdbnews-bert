@@ -16,6 +16,40 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# Tampilan untuk memilih jenis berita
+st.subheader("Pilih Jenis Berita")
+news_type = st.selectbox("Pilih Jenis Berita:", options=["Berita Ekonomi", "Berita Politik", "Berita Teknologi", "Berita Olahraga", "Berita Hiburan", "Semua"])
+
+# Tampilan untuk memilih rentang tanggal
+st.subheader("Pilih Rentang Tanggal")
+start_date = st.date_input("Tanggal Mulai")
+end_date = st.date_input("Tanggal Akhir")
+
+# Tombol untuk menyimpan pilihan
+st.subheader("Proses Scraping dan Penerapan Model")
+
+# Button dengan warna khusus
+save_button = st.button("Simpan Pilihan")
+process_button = st.button("Proses Pembersihan Berita")
+segment_button = st.button("Segmentasi Berita")
+apply_model_button = st.button("Terapkan Model")
+
+# Menggunakan CSS untuk memberi warna tombol
+if save_button:
+    st.markdown("<style>button[title='Simpan Pilihan'] {background-color: #28a745; color: white;}</style>", unsafe_allow_html=True)
+    st.write("Pilihan berita dan tanggal telah disimpan.")
+
+if process_button:
+    st.markdown("<style>button[title='Proses Pembersihan Berita'] {background-color: #007bff; color: white;}</style>", unsafe_allow_html=True)
+    st.write("Proses pembersihan berita dimulai...")
+
+if segment_button:
+    st.markdown("<style>button[title='Segmentasi Berita'] {background-color: #ffc107; color: white;}</style>", unsafe_allow_html=True)
+    st.write("Segmentasi berita sedang diproses...")
+
+if apply_model_button:
+    st.markdown("<style>button[title='Terapkan Model'] {background-color: #28a745; color: white;}</style>", unsafe_allow_html=True)
+    st.write("Model sedang diterapkan pada berita...")
 # Load data
 data = pd.read_csv("dataset.csv")
 data['pdb_label'] = data['pdb_label'].map({1: 'Naik', -1: 'Turun'}).fillna('Tidak diketahui')
@@ -144,37 +178,8 @@ with col3:
 with col4:
     colored_metric2("F1-Score", "64,88%", "#2196F3")
 
-# Tampilan untuk memilih jenis berita
-st.subheader("Pilih Jenis Berita")
-news_type = st.selectbox("Pilih Jenis Berita:", options=["Berita Ekonomi", "Berita Politik", "Berita Teknologi", "Berita Olahraga", "Berita Hiburan", "Semua"])
 
-# Tampilan untuk memilih rentang tanggal
-st.subheader("Pilih Rentang Tanggal")
-start_date = st.date_input("Tanggal Mulai")
-end_date = st.date_input("Tanggal Akhir")
 
-# Tombol untuk menyimpan pilihan
-st.subheader("Proses Scraping dan Penerapan Model")
-save_button = st.button("Simpan Pilihan")
-
-# Tombol untuk memulai proses pembersihan berita
-process_button = st.button("Proses Pembersihan Berita")
-
-# Tombol untuk memulai segmentasi berita
-segment_button = st.button("Segmentasi Berita")
-
-# Tombol untuk menerapkan model pada berita
-apply_model_button = st.button("Terapkan Model")
-
-# Informasi tambahan atau feedback kepada user
-if save_button:
-    st.write("Pilihan berita dan tanggal telah disimpan.")
-if process_button:
-    st.write("Proses pembersihan berita dimulai...")
-if segment_button:
-    st.write("Segmentasi berita sedang diproses...")
-if apply_model_button:
-    st.write("Model sedang diterapkan pada berita...")
 
 
 
