@@ -134,13 +134,14 @@ def colored_metric2(label, value, color):
 col1, col2, col3, col4 = st.columns(4)
 # Menampilkan hasil klasifikasi untuk kategori usaha
 with col1:
-    colored_metric2("Akurasi", "89,71%", "#FF9800")
+    colored_metric2("Akurasi", "82,71%", "#FF9800")
 with col2:
-    colored_metric2("Presisi", "88,78%", "#4CAF50")
+    colored_metric2("Presisi", "75,53%", "#4CAF50")
 with col3:
-    colored_metric2("Recall", "88,64%", "#FFD700")
+    colored_metric2("Recall", "61,25%", "#FFD700")
 with col4:
-    colored_metric2("F1-Score", "88,71%", "#2196F3")
+    colored_metric2("F1-Score", "64,88%", "#2196F3")
+
 
 
 
