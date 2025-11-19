@@ -16,6 +16,14 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# Tampilan untuk memilih rentang tanggal
+st.subheader("Pilih Rentang Tanggal")
+start_date = st.date_input("Tanggal Mulai")
+end_date = st.date_input("Tanggal Akhir")
+
+st.subheader("Pilih Jenis Berita")
+news_type = st.selectbox("Pilih Jenis Berita:", options=["Berita Ekonomi", "Berita Politik", "Berita Teknologi", "Berita Olahraga", "Berita Hiburan", "Semua"])
+
 # Kolom untuk mengetikkan kata kunci berita yang dicari
 st.subheader("Masukkan Kata Kunci Berita")
 keywords = st.text_input("Ketikkan kata kunci berita yang dicari:")
@@ -36,16 +44,9 @@ if show_notes:
 
     Kamu bisa menggunakan kata kunci tersebut atau menyesuaikan sesuai dengan kebutuhan pencarian beritamu.
     """)
-
-
-# Tampilan untuk memilih rentang tanggal
-st.subheader("Pilih Rentang Tanggal")
-start_date = st.date_input("Tanggal Mulai")
-end_date = st.date_input("Tanggal Akhir")
-
+    
 # Tombol untuk menyimpan pilihan
 st.subheader("Proses Scraping dan Penerapan Model")
-
 
 # Menambahkan tombol dengan warna kustom menggunakan HTML dan CSS
 st.markdown("""
