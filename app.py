@@ -16,6 +16,11 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# Tampilan untuk memilih jenis berita
+st.subheader("Pilih Jenis Berita")
+news_type = st.selectbox("Pilih Jenis Berita:", options=["Berita Ekonomi", "Berita Politik", "Berita Teknologi", "Berita Olahraga", "Berita Hiburan", "Semua"])
+
+
 # Kolom untuk mengetikkan kata kunci berita yang dicari
 st.subheader("Masukkan Kata Kunci Berita")
 keywords = st.text_input("Ketikkan kata kunci berita yang dicari:")
@@ -191,6 +196,7 @@ with col3:
     colored_metric2("Recall", "61,25%", "#FFD700")
 with col4:
     colored_metric2("F1-Score", "64,88%", "#2196F3")
+
 
 
 
