@@ -105,4 +105,26 @@ with col3:
 with col4:
     colored_metric1("F1-Score", "88,71%", "#2196F3")
 
+# Hasil klasifikasi 17 kategori lapangan usaha
+st.markdown("#### Jenis Growth Rate PDB Dengan Model IndoRoBERTa") 
+
+def colored_metric2(label, value, color):
+    st.markdown(f"""
+    <div style="padding: 10px; border-radius: 5px; background-color: {color}; color: white; text-align: center;">
+        <h4>{label}</h4>
+        <p style="font-size: 24px; font-weight: bold; margin: 0;">{value}</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Menampilkan hasil klasifikasi
+col1, col2, col3, col4 = st.columns(4)
+# Menampilkan hasil klasifikasi untuk kategori usaha
+with col1:
+    colored_metric2("Akurasi", "89,71%", "#FF9800")
+with col2:
+    colored_metric2("Presisi", "88,78%", "#4CAF50")
+with col3:
+    colored_metric2("Recall", "88,64%", "#FFD700")
+with col4:
+    colored_metric2("F1-Score", "88,71%", "#2196F3")
 
