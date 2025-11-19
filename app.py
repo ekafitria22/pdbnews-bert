@@ -36,7 +36,7 @@ apply_model_button = st.button("Terapkan Model")
 
 # Menggunakan CSS untuk memberi warna tombol
 if save_button:
-    st.markdown("<style>button[title='Simpan Pilihan'] {background-color: #28a745; color: white;}</style>", unsafe_allow_html=True)
+    st.markdown("<style>button[title='Simpan Pilihan'] {background-color: #FF9800; color: white;}</style>", unsafe_allow_html=True)
     st.write("Pilihan berita dan tanggal telah disimpan.")
 
 if process_button:
@@ -177,6 +177,7 @@ with col3:
     colored_metric2("Recall", "61,25%", "#FFD700")
 with col4:
     colored_metric2("F1-Score", "64,88%", "#2196F3")
+
 
 
 
