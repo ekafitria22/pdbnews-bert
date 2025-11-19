@@ -62,20 +62,6 @@ process_button = st.markdown('<button class="process-btn">Proses Pembersihan Ber
 segment_button = st.markdown('<button class="segment-btn">Segmentasi Berita</button>', unsafe_allow_html=True)
 apply_model_button = st.markdown('<button class="apply-model-btn">Terapkan Model</button>', unsafe_allow_html=True)
 
-# Informasi terkait klik tombol
-if save_button:
-    st.write("Pilihan berita dan tanggal telah disimpan.")
-
-if process_button:
-    st.write("Proses pembersihan berita dimulai...")
-
-if segment_button:
-    st.write("Segmentasi berita sedang diproses...")
-
-if apply_model_button:
-    st.write("Model sedang diterapkan pada berita...")
-
-
 # Load data
 data = pd.read_csv("dataset.csv")
 data['pdb_label'] = data['pdb_label'].map({1: 'Naik', -1: 'Turun'}).fillna('Tidak diketahui')
@@ -203,6 +189,7 @@ with col3:
     colored_metric2("Recall", "61,25%", "#FFD700")
 with col4:
     colored_metric2("F1-Score", "64,88%", "#2196F3")
+
 
 
 
