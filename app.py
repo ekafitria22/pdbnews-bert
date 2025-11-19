@@ -97,7 +97,7 @@ with col4:
 # st.markdown("<br><br>", unsafe_allow_html=True)  # Jeda antara pergerakan PDB dan kategori usaha
 
 # Hasil klasifikasi 17 kategori lapangan usaha
-st.markdown("#### 17 Kategori Lapangan Usaha PDB Dengan Model IndoRoBERTa") 
+st.markdown("#### 17 Kategori Lapangan Usaha Dengan Model IndoRoBERTa") 
 
 def colored_metric1(label, value, color):
     st.markdown(f"""
@@ -120,7 +120,7 @@ with col4:
     colored_metric1("F1-Score", "86,17%", "#2196F3")
 
 # Hasil klasifikasi 17 kategori lapangan usaha
-st.markdown("#### Jenis Growth Rate PDB Dengan Model IndoRoBERTa") 
+st.markdown("#### Jenis Berita Pertumbuhan Dengan Model IndoRoBERTa") 
 
 def colored_metric2(label, value, color):
     st.markdown(f"""
@@ -141,6 +141,7 @@ with col3:
     colored_metric2("Recall", "61,25%", "#FFD700")
 with col4:
     colored_metric2("F1-Score", "64,88%", "#2196F3")
+
 
 
 
