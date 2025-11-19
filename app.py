@@ -14,14 +14,17 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# Load data
 data = pd.read_csv("dataset.csv")
 data['pdb_label'] = data['pdb_label'].map({1: 'Naik', -1: 'Turun'}).fillna('Tidak diketahui')
 
+# Pilih kategori lapangan usaha
 st.subheader("Data Berita Terkini")
 sector_label = st.selectbox("Pilih Kategori Lapangan Usaha:", options=data['sector_label'].dropna().unique())
 filtered_data = data[data['sector_label'] == sector_label].copy()
 st.write(f"Menampilkan berita dengan kategori: {sector_label}")
 
+# Fungsi untuk label dengan warna
 def label_with_color(x):
     if x == 'Naik':
         return "🟢 Naik"
@@ -32,10 +35,12 @@ def label_with_color(x):
 
 filtered_data['pdb_label_color'] = filtered_data['pdb_label'].apply(label_with_color)
 
+# Menampilkan data dengan AgGrid
 cols_to_show = ['title', 'publish_date', 'sector_label', 'pdb_label_color']
 data1 = filtered_data[cols_to_show].copy()
 data1.reset_index(drop=True, inplace=True)
 
+# AgGrid setup
 gb = GridOptionsBuilder.from_dataframe(data1)
 gb.configure_default_column(editable=False, groupable=False)
 gb.configure_column("title", width=300, header_name="Judul Berita")
@@ -47,10 +52,14 @@ grid_options = gb.build()
 
 AgGrid(data1, gridOptions=grid_options, height=400)
 
+# Menambahkan jeda antara dua bagian
+st.markdown("<br><br>", unsafe_allow_html=True)  # Jeda antara berita dan hasil klasifikasi
+
+# Hasil klasifikasi pergerakan PDB
 st.subheader("Hasil Klasifikasi")
 st.markdown("#### Pergerakan PDB Dengan Model IndoRoBERTa") 
-col1, col2, col3, col4 = st.columns(4)
-# Fungsi untuk buat teks berwarna
+
+# Fungsi untuk membuat teks berwarna
 def colored_metric(label, value, color):
     st.markdown(f"""
     <div style="padding: 10px; border-radius: 5px; background-color: {color}; color: white; text-align: center;">
@@ -58,6 +67,9 @@ def colored_metric(label, value, color):
         <p style="font-size: 24px; font-weight: bold; margin: 0;">{value}</p>
     </div>
     """, unsafe_allow_html=True)
+
+# Menampilkan hasil klasifikasi
+col1, col2, col3, col4 = st.columns(4)
 with col1:
     colored_metric("Akurasi", "89,71%", "#FF9800")
 with col2:
@@ -67,17 +79,14 @@ with col3:
 with col4:
     colored_metric("F1-Score", "88,71%", "#2196F3")
 
+# Menambahkan jeda lagi setelah pergerakan PDB
+st.markdown("<br><br>", unsafe_allow_html=True)  # Jeda antara pergerakan PDB dan kategori usaha
 
+# Hasil klasifikasi 17 kategori lapangan usaha
 st.subheader("Hasil Klasifikasi")
 st.markdown("#### 17 Kategori Lapangan Usaha PDB Dengan Model IndoRoBERTa") 
 
-def colored_metric(label, value, color):
-    st.markdown(f"""
-    <div style="padding: 10px; border-radius: 5px; background-color: {color}; color: white; text-align: center;">
-        <h4>{label}</h4>
-        <p style="font-size: 24px; font-weight: bold; margin: 0;">{value}</p>
-    </div>
-    """, unsafe_allow_html=True)
+# Menampilkan hasil klasifikasi untuk kategori usaha
 with col1:
     colored_metric("Akurasi", "89,71%", "#FF9800")
 with col2:
@@ -86,5 +95,3 @@ with col3:
     colored_metric("Recall", "88,64%", "#FFD700")
 with col4:
     colored_metric("F1-Score", "88,71%", "#2196F3")
-
-
