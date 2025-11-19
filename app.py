@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 from st_aggrid import AgGrid, GridOptionsBuilder
 
-st.image("bps.png", width=200)
+st.markdown("<div style='text-align: center;'><img src='bps.png' width='200'></div>", unsafe_allow_html=True)
+
 # Judul rata tengah
 st.markdown(
     "<h1 style='text-align: center;'>Dashboard Klasifikasi Berita Ekonomi Pergerakan PDB Indonesia</h1>",
@@ -174,6 +175,7 @@ if segment_button:
     st.write("Segmentasi berita sedang diproses...")
 if apply_model_button:
     st.write("Model sedang diterapkan pada berita...")
+
 
 
 
