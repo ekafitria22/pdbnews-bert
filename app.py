@@ -20,6 +20,19 @@ st.markdown(
 st.subheader("Pilih Jenis Berita")
 news_type = st.selectbox("Pilih Jenis Berita:", options=["Berita Ekonomi", "Berita Politik", "Berita Teknologi", "Berita Olahraga", "Berita Hiburan", "Semua"])
 
+# Kolom catatan kata kunci dengan contoh
+st.subheader("Catatan Kata Kunci")
+st.write("""
+Untuk kategori **Ekonomi**, contoh kata kunci yang bisa digunakan:
+- Ekonomi Digital
+- Inflasi
+- Pertumbuhan Ekonomi
+- Kebijakan Moneter
+- Investasi
+
+Kamu bisa menggunakan kata kunci tersebut atau menyesuaikan sesuai dengan kebutuhan pencarian beritamu.
+""")
+
 # Tampilan untuk memilih rentang tanggal
 st.subheader("Pilih Rentang Tanggal")
 start_date = st.date_input("Tanggal Mulai")
@@ -177,6 +190,7 @@ with col3:
     colored_metric2("Recall", "61,25%", "#FFD700")
 with col4:
     colored_metric2("F1-Score", "64,88%", "#2196F3")
+
 
 
 
