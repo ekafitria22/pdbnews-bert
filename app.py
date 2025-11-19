@@ -126,7 +126,7 @@ st.markdown("#### Pergerakan PDB Dengan Model IndoRoBERTa")
 # Fungsi untuk membuat teks berwarna
 def colored_metric(label, value, color):
     st.markdown(f"""
-    <div style="padding: 10px; border-radius: 5px; background-color: {color}; color: white; text-align: center;">
+    <div style="padding: 10px; border-radius: 3px; background-color: {color}; color: white; text-align: center;">
         <h4>{label}</h4>
         <p style="font-size: 24px; font-weight: bold; margin: 0;">{value}</p>
     </div>
@@ -191,6 +191,7 @@ with col3:
     colored_metric2("Recall", "57,31%", "#FFD700")
 with col4:
     colored_metric2("F1-Score", "61,91%", "#2196F3")
+
 
 
 
