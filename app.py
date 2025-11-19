@@ -80,10 +80,9 @@ with col4:
     colored_metric("F1-Score", "88,71%", "#2196F3")
 
 # Menambahkan jeda lagi setelah pergerakan PDB
-st.markdown("<br><br>", unsafe_allow_html=True)  # Jeda antara pergerakan PDB dan kategori usaha
+# st.markdown("<br><br>", unsafe_allow_html=True)  # Jeda antara pergerakan PDB dan kategori usaha
 
 # Hasil klasifikasi 17 kategori lapangan usaha
-st.subheader("Hasil Klasifikasi")
 st.markdown("#### 17 Kategori Lapangan Usaha PDB Dengan Model IndoRoBERTa") 
 
 def colored_metric1(label, value, color):
@@ -105,4 +104,5 @@ with col3:
     colored_metric1("Recall", "88,64%", "#FFD700")
 with col4:
     colored_metric1("F1-Score", "88,71%", "#2196F3")
+
 
