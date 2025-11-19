@@ -36,14 +36,14 @@ def label_with_color(x):
 filtered_data['pdb_label_color'] = filtered_data['pdb_label'].apply(label_with_color)
 
 # Menampilkan data dengan AgGrid
-cols_to_show = ['title', 'publish_date', 'sector_label', 'pdb_label_color']
+cols_to_show = ['title', 'publish_date', 'sector_label', 'pdb_label_color', 'growth_label']
 data1 = filtered_data[cols_to_show].copy()
 data1.reset_index(drop=True, inplace=True)
 
 # AgGrid setup
 gb = GridOptionsBuilder.from_dataframe(data1)
 gb.configure_default_column(editable=False, groupable=False)
-gb.configure_column("title", width=150, header_name="Judul Berita")
+gb.configure_column("title", width=15, header_name="Judul Berita")
 gb.configure_column("publish_date", width=50, header_name="Tanggal Terbit")
 gb.configure_column("sector_label", width=100, header_name="Sektor Industri")
 gb.configure_column("pdb_label_color", width=50, header_name="Prediksi")
@@ -128,6 +128,7 @@ with col3:
     colored_metric2("Recall", "88,64%", "#FFD700")
 with col4:
     colored_metric2("F1-Score", "88,71%", "#2196F3")
+
 
 
 
