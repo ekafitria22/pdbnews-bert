@@ -19,10 +19,23 @@ data = pd.read_csv("dataset.csv")
 data['pdb_label'] = data['pdb_label'].map({1: 'Naik', -1: 'Turun'}).fillna('Tidak diketahui')
 
 # Pilih kategori lapangan usaha
+# st.subheader("Data Berita Terkini")
+# sector_label = st.selectbox("Pilih Kategori Lapangan Usaha:", options=data['sector_label'].dropna().unique())
+# filtered_data = data[data['sector_label'] == sector_label].copy()
+# st.write(f"Menampilkan berita dengan kategori: {sector_label}")
+
+# Pilih kategori lapangan usaha
 st.subheader("Data Berita Terkini")
-sector_label = st.selectbox("Pilih Kategori Lapangan Usaha:", options=data['sector_label'].dropna().unique())
-filtered_data = data[data['sector_label'] == sector_label].copy()
+sector_label = st.selectbox("Pilih Kategori Lapangan Usaha:", options=["Semua"] + list(data['sector_label'].dropna().unique()))
+
+# Filter data berdasarkan kategori yang dipilih
+if sector_label == "Semua":
+    filtered_data = data.copy()  # Tampilkan semua data jika "Semua" dipilih
+else:
+    filtered_data = data[data['sector_label'] == sector_label].copy()
+
 st.write(f"Menampilkan berita dengan kategori: {sector_label}")
+
 
 # Fungsi untuk label dengan warna
 def label_with_color(x):
@@ -128,6 +141,7 @@ with col3:
     colored_metric2("Recall", "88,64%", "#FFD700")
 with col4:
     colored_metric2("F1-Score", "88,71%", "#2196F3")
+
 
 
 
