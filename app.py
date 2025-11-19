@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from st_aggrid import AgGrid, GridOptionsBuilder
 
-st.image("bps.png", width=10, use_column_width=True)
+st.image("bps.png", width=200)
 
 # Judul rata tengah
 st.markdown(
@@ -175,6 +175,7 @@ if segment_button:
     st.write("Segmentasi berita sedang diproses...")
 if apply_model_button:
     st.write("Model sedang diterapkan pada berita...")
+
 
 
 
