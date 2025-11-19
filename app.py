@@ -43,10 +43,11 @@ data1.reset_index(drop=True, inplace=True)
 # AgGrid setup
 gb = GridOptionsBuilder.from_dataframe(data1)
 gb.configure_default_column(editable=False, groupable=False)
-gb.configure_column("title", width=300, header_name="Judul Berita")
-gb.configure_column("publish_date", width=150, header_name="Tanggal Terbit")
-gb.configure_column("sector_label", width=150, header_name="Sektor Industri")
-gb.configure_column("pdb_label_color", width=120, header_name="Prediksi")
+gb.configure_column("title", width=150, header_name="Judul Berita")
+gb.configure_column("publish_date", width=50, header_name="Tanggal Terbit")
+gb.configure_column("sector_label", width=100, header_name="Sektor Industri")
+gb.configure_column("pdb_label_color", width=50, header_name="Prediksi")
+gb.configure_column("growth_label", width=50, header_name="Jenis Berita Pertumbuhan")
 
 grid_options = gb.build()
 
@@ -127,5 +128,6 @@ with col3:
     colored_metric2("Recall", "88,64%", "#FFD700")
 with col4:
     colored_metric2("F1-Score", "88,71%", "#2196F3")
+
 
 
