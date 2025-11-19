@@ -97,13 +97,13 @@ def colored_metric1(label, value, color):
 col1, col2, col3, col4 = st.columns(4)
 # Menampilkan hasil klasifikasi untuk kategori usaha
 with col1:
-    colored_metric1("Akurasi", "89,71%", "#FF9800")
+    colored_metric1("Akurasi", "85,88%", "#FF9800")
 with col2:
-    colored_metric1("Presisi", "88,78%", "#4CAF50")
+    colored_metric1("Presisi", "86,21%", "#4CAF50")
 with col3:
-    colored_metric1("Recall", "88,64%", "#FFD700")
+    colored_metric1("Recall", "86,48%", "#FFD700")
 with col4:
-    colored_metric1("F1-Score", "88,71%", "#2196F3")
+    colored_metric1("F1-Score", "86,17%", "#2196F3")
 
 # Hasil klasifikasi 17 kategori lapangan usaha
 st.markdown("#### Jenis Growth Rate PDB Dengan Model IndoRoBERTa") 
@@ -127,4 +127,5 @@ with col3:
     colored_metric2("Recall", "88,64%", "#FFD700")
 with col4:
     colored_metric2("F1-Score", "88,71%", "#2196F3")
+
 
