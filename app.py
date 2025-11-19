@@ -32,6 +32,7 @@ if show_notes:
     - Pertumbuhan Ekonomi
     - Kebijakan Moneter
     - Investasi
+    dll.
 
     Kamu bisa menggunakan kata kunci tersebut atau menyesuaikan sesuai dengan kebutuhan pencarian beritamu.
     """)
@@ -67,7 +68,7 @@ data = pd.read_csv("dataset.csv")
 data['pdb_label'] = data['pdb_label'].map({1: 'Naik', -1: 'Turun'}).fillna('Tidak diketahui')
 
 # Pilih kategori lapangan usaha
-# st.subheader("Data Berita Terkini")
+# st.subheader("Hasil Klasifikasi Berita Topik Ekonomi ")
 # sector_label = st.selectbox("Pilih Kategori Lapangan Usaha:", options=data['sector_label'].dropna().unique())
 # filtered_data = data[data['sector_label'] == sector_label].copy()
 # st.write(f"Menampilkan berita dengan kategori: {sector_label}")
@@ -189,6 +190,7 @@ with col3:
     colored_metric2("Recall", "61,25%", "#FFD700")
 with col4:
     colored_metric2("F1-Score", "64,88%", "#2196F3")
+
 
 
 
