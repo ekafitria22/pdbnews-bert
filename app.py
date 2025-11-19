@@ -48,7 +48,7 @@ grid_options = gb.build()
 AgGrid(data1, gridOptions=grid_options, height=400)
 
 st.subheader("Hasil Klasifikasi")
-st.markdown("#### Dengan Model IndoRoBERTa") 
+st.markdown("#### Pergerakan PDB Dengan Model IndoRoBERTa") 
 col1, col2, col3, col4 = st.columns(4)
 # Fungsi untuk buat teks berwarna
 def colored_metric(label, value, color):
@@ -66,6 +66,10 @@ with col3:
     colored_metric("Recall", "88,64%", "#FFD700")
 with col4:
     colored_metric("F1-Score", "88,71%", "#2196F3")
+
+
+st.subheader("Hasil Klasifikasi")
+st.markdown("#### 17 Kategori Lapangan Usaha PDB Dengan Model IndoRoBERTa") 
 
 def colored_metric(label, value, color):
     st.markdown(f"""
