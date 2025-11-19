@@ -67,7 +67,7 @@ grid_options = gb.build()
 AgGrid(data1, gridOptions=grid_options, height=400)
 
 # Menambahkan jeda antara dua bagian
-st.markdown("<br><br>", unsafe_allow_html=True)  # Jeda antara berita dan hasil klasifikasi
+st.markdown("<br>", unsafe_allow_html=True)  # Jeda antara berita dan hasil klasifikasi
 
 # Hasil klasifikasi pergerakan PDB
 st.subheader("Hasil Klasifikasi")
@@ -141,6 +141,39 @@ with col3:
     colored_metric2("Recall", "61,25%", "#FFD700")
 with col4:
     colored_metric2("F1-Score", "64,88%", "#2196F3")
+
+# Tampilan untuk memilih jenis berita
+st.subheader("Pilih Jenis Berita")
+news_type = st.selectbox("Pilih Jenis Berita:", options=["Berita Ekonomi", "Berita Politik", "Berita Teknologi", "Berita Olahraga", "Berita Hiburan", "Semua"])
+
+# Tampilan untuk memilih rentang tanggal
+st.subheader("Pilih Rentang Tanggal")
+start_date = st.date_input("Tanggal Mulai")
+end_date = st.date_input("Tanggal Akhir")
+
+# Tombol untuk menyimpan pilihan
+st.subheader("Proses Scraping dan Penerapan Model")
+save_button = st.button("Simpan Pilihan")
+
+# Tombol untuk memulai proses pembersihan berita
+process_button = st.button("Proses Pembersihan Berita")
+
+# Tombol untuk memulai segmentasi berita
+segment_button = st.button("Segmentasi Berita")
+
+# Tombol untuk menerapkan model pada berita
+apply_model_button = st.button("Terapkan Model")
+
+# Informasi tambahan atau feedback kepada user
+if save_button:
+    st.write("Pilihan berita dan tanggal telah disimpan.")
+if process_button:
+    st.write("Proses pembersihan berita dimulai...")
+if segment_button:
+    st.write("Segmentasi berita sedang diproses...")
+if apply_model_button:
+    st.write("Model sedang diterapkan pada berita...")
+
 
 
 
