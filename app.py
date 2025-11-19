@@ -45,28 +45,37 @@ end_date = st.date_input("Tanggal Akhir")
 # Tombol untuk menyimpan pilihan
 st.subheader("Proses Scraping dan Penerapan Model")
 
-# Button dengan warna khusus
-save_button = st.button("Simpan Pilihan")
-process_button = st.button("Proses Pembersihan Berita")
-segment_button = st.button("Segmentasi Berita")
-apply_model_button = st.button("Terapkan Model")
 
-# Menggunakan CSS untuk memberi warna tombol
+# Menambahkan tombol dengan warna kustom menggunakan HTML dan CSS
+st.markdown("""
+    <style>
+    .save-btn {background-color: #28a745; color: white; padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer;}
+    .process-btn {background-color: #007bff; color: white; padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer;}
+    .segment-btn {background-color: #FF9800; color: white; padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer;}
+    .apply-model-btn {background-color: #ffc107; color: white; padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer;}
+    </style>
+""", unsafe_allow_html=True)
+
+# Simulasikan tombol Streamlit dengan HTML
+save_button = st.markdown('<button class="save-btn">Simpan Pilihan</button>', unsafe_allow_html=True)
+process_button = st.markdown('<button class="process-btn">Proses Pembersihan Berita</button>', unsafe_allow_html=True)
+segment_button = st.markdown('<button class="segment-btn">Segmentasi Berita</button>', unsafe_allow_html=True)
+apply_model_button = st.markdown('<button class="apply-model-btn">Terapkan Model</button>', unsafe_allow_html=True)
+
+# Informasi terkait klik tombol
 if save_button:
-    st.markdown("<style>button[title='Simpan Pilihan'] {background-color: #FF9800; color: white;}</style>", unsafe_allow_html=True)
     st.write("Pilihan berita dan tanggal telah disimpan.")
 
 if process_button:
-    st.markdown("<style>button[title='Proses Pembersihan Berita'] {background-color: #007bff; color: white;}</style>", unsafe_allow_html=True)
     st.write("Proses pembersihan berita dimulai...")
 
 if segment_button:
-    st.markdown("<style>button[title='Segmentasi Berita'] {background-color: #ffc107; color: white;}</style>", unsafe_allow_html=True)
     st.write("Segmentasi berita sedang diproses...")
 
 if apply_model_button:
-    st.markdown("<style>button[title='Terapkan Model'] {background-color: #28a745; color: white;}</style>", unsafe_allow_html=True)
     st.write("Model sedang diterapkan pada berita...")
+
+
 # Load data
 data = pd.read_csv("dataset.csv")
 data['pdb_label'] = data['pdb_label'].map({1: 'Naik', -1: 'Turun'}).fillna('Tidak diketahui')
@@ -194,6 +203,7 @@ with col3:
     colored_metric2("Recall", "61,25%", "#FFD700")
 with col4:
     colored_metric2("F1-Score", "64,88%", "#2196F3")
+
 
 
 
