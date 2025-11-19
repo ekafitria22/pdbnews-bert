@@ -48,7 +48,7 @@ grid_options = gb.build()
 AgGrid(data1, gridOptions=grid_options, height=400)
 
 st.subheader("Hasil Klasifikasi")
-st.markdown("#### Dengan Model Indolem") 
+st.markdown("#### Dengan Model IndoRoBERTa") 
 col1, col2, col3, col4 = st.columns(4)
 # Fungsi untuk buat teks berwarna
 def colored_metric(label, value, color):
@@ -59,10 +59,28 @@ def colored_metric(label, value, color):
     </div>
     """, unsafe_allow_html=True)
 with col1:
-    colored_metric("Akurasi", "73%", "#FF9800")
+    colored_metric("Akurasi", "89,71%", "#FF9800")
 with col2:
-    colored_metric("Presisi", "80%", "#4CAF50")
+    colored_metric("Presisi", "88,78%", "#4CAF50")
 with col3:
-    colored_metric("Recall", "75%", "#FFD700")
+    colored_metric("Recall", "88,64%", "#FFD700")
 with col4:
-    colored_metric("F1-Score", "82%", "#2196F3")
+    colored_metric("F1-Score", "88,71%", "#2196F3")
+
+def colored_metric(label, value, color):
+    st.markdown(f"""
+    <div style="padding: 10px; border-radius: 5px; background-color: {color}; color: white; text-align: center;">
+        <h4>{label}</h4>
+        <p style="font-size: 24px; font-weight: bold; margin: 0;">{value}</p>
+    </div>
+    """, unsafe_allow_html=True)
+with col1:
+    colored_metric("Akurasi", "89,71%", "#FF9800")
+with col2:
+    colored_metric("Presisi", "88,78%", "#4CAF50")
+with col3:
+    colored_metric("Recall", "88,64%", "#FFD700")
+with col4:
+    colored_metric("F1-Score", "88,71%", "#2196F3")
+
+
