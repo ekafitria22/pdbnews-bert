@@ -523,7 +523,7 @@ if data_source_mode == "Scraping Berita Real-Time":
         if show_notes:
             st.write(", ".join(KEYWORD_HINT))
     else:
-        keywords = "+"
+        keywords = "ekonomi"
 
     cat_label = st.selectbox(
         "Kategori Berita",
@@ -719,7 +719,10 @@ if scrape_clicked and data_source_mode == "Scraping Berita Real-Time":
             st.warning("Sebagian scraping gagal:\n\n" + "\n".join([str(x) for x in scrape_errors[:10]]))
 
         if df_raw.empty:
-            st.warning(f'Tidak ada artikel yang ditemukan mengenai "{keywords}".')
+            if topic_mode == "Topik berita campuran":
+                st.warning("Tidak ada artikel ditemukan untuk mode topik berita campuran.")
+            else:
+                st.warning(f'Tidak ada artikel yang ditemukan mengenai "{keywords}".')
         else:
             st.success(f"Selesai scraping. Total artikel: {len(df_raw)}")
 
