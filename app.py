@@ -685,7 +685,7 @@ with download_col2:
         file_name="hasil_berita_ekonomi.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    )
+    
 
 # =========================
 # METRICS PLACEHOLDER
