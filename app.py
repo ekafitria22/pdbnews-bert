@@ -2,12 +2,15 @@ import os
 import ast
 import pickle
 import csv
+import re
 from io import BytesIO
 
 import pandas as pd
 import streamlit as st
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 from st_aggrid import AgGrid, GridOptionsBuilder
 
 from utils.constants import APP_TITLE, CATEGORY_SITEID, NEWS_TYPE_OPTIONS, KEYWORD_HINT
@@ -24,6 +27,8 @@ GROWTH_MODEL_DIR = "./growth"
 CATEGORY_ENCODER = "label_encoder_category.pkl"
 MOVEMENT_ENCODER = "label_encoder_movement.pkl"
 GROWTH_ENCODER = "label_encoder_growth.pkl"
+
+SBERT_MODEL_NAME = "sentence-transformers/paraphrase-MiniLM-L6-v2"
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -54,7 +59,7 @@ st.markdown(f"<h1 style='text-align: center;'>{APP_TITLE}</h1>", unsafe_allow_ht
 st.markdown(
     "<p style='text-align: center;'>"
     "Aplikasi mendukung dua mode: "
-    "<b>(1)</b> scraping berita baru lalu processing dan klasifikasi, "
+    "<b>(1)</b> scraping berita baru lalu processing, seleksi kalimat, dan klasifikasi, "
     "<b>(2)</b> load dataset CSV yang sudah disimpan."
     "</p>",
     unsafe_allow_html=True
@@ -67,6 +72,7 @@ for key, default in {
     "params": {},
     "df_raw": pd.DataFrame(),
     "df_clean": pd.DataFrame(),
+    "df_selected": pd.DataFrame(),
     "df_pred": pd.DataFrame(),
     "segments": {},
     "loaded_from": "",
@@ -98,6 +104,11 @@ def load_all_models():
     movement_bundle = load_model_bundle(MOVEMENT_MODEL_DIR, MOVEMENT_ENCODER)
     growth_bundle = load_model_bundle(GROWTH_MODEL_DIR, GROWTH_ENCODER)
     return category_bundle, movement_bundle, growth_bundle
+
+
+@st.cache_resource
+def load_sbert_model():
+    return SentenceTransformer(SBERT_MODEL_NAME)
 
 
 def models_ready():
@@ -138,12 +149,135 @@ def predict_single_text(text, tokenizer, model, encoder, max_length=512):
 # =========================
 # HELPERS
 # =========================
+SELECTION_KEYWORDS = [
+    # Movement / arah ekonomi
+    "naik", "tumbuh", "tingkat", "positif", "optimis", "kuat",
+    "lonjak", "puncak", "baik", "pulih", "lebih", "deflasi", "stimulus",
+    "bangun ekonomi", "surplus", "capai", "hijau", "peningkatan", "peluang",
+    "meningkat", "tumbuh pesat", "optimisme", "akselerasi", "stabil", "kinerja",
+    "progres", "proyeksi", "pertumbuhan ekonomi", "lonjakan sektor", "peningkatan yang signifikan",
+    "peluang pertumbuhan", "akselerasi pertumbuhan", "stabilisasi ekonomi", "proyeksi positif",
+    "ekspansi ekonomi", "kinerja yang kuat", "kekuatan ekonomi", "ekonomi yang pulih",
+    "peningkatan produktivitas", "pertumbuhan investasi", "peluang pasar", "pendapatan meningkat",
+    "optimisme pasar", "optimisme investor", "keuntungan besar", "pencapaian ekonomi",
+    "peningkatan daya beli", "peningkatan lapangan pekerjaan", "proyeksi pertumbuhan stabil",
+    "indikator ekonomi positif", "sektor berkembang", "sektor ekspansif", "kondisi ekonomi sehat",
+    "kepercayaan ekonomi", "kinerja sektor", "investasi berkembang", "kinerja ekspor",
+
+    "inflasi", "turun", "lambat", "jatuh", "lemah", "merosot",
+    "kontraksi", "rebound", "puruk", "buruk", "susut", "krisis", "resesi",
+    "negatif", "gagal", "jatuh bebas", "anggur", "defisit",
+    "miskin", "efisiensi", "drop", "merah", "penurunan",
+    "deflasi", "penyusutan", "tertahan", "lesu", "depresi", "kemerosotan", "berkurang",
+    "penurunan ekonomi", "deflasi ekonomi", "kemerosotan sektor", "krisis ekonomi",
+    "resesi global", "kontraksi ekonomi", "lambatnya pertumbuhan", "penyusutan sektor",
+    "kondisi lesu", "pertumbuhan negatif", "berkurangnya investasi", "krisis finansial",
+    "penurunan daya beli", "krisis moneter", "resesi ekonomi global", "penurunan pendapatan",
+    "krisis utang", "kondisi pasar buruk", "turunnya konsumsi", "kelemahan sektor",
+    "penurunan produksi", "depresi ekonomi", "kemerosotan pasar", "penyusutan pasar",
+    "beban utang tinggi", "kelemahan investasi", "turunnya ekspor", "krisis ketenagakerjaan",
+    "pengangguran meningkat", "defisit fiskal",
+
+    # Growth
+    "tahun", "perbandingan tahunan", "dari tahun ke tahun", "pertumbuhan tahunan",
+    "perbandingan tahun sebelumnya", "pertumbuhan ekonomi tahun ini", "analisis tahunan",
+    "yoy", "y o y", "y-o-y", "year-on-year", "year on year",
+    "kuartal", "triwulan", "perbandingan kuartalan", "pertumbuhan kuartalan",
+    "qtoq", "q-to-q", "quartal-to-quartal", "perbandingan kuartal sebelumnya",
+    "pertumbuhan ekonomi kuartal ini", "analisis kuartalan", "quartal to quartal",
+    "q to q", "q1", "q2", "q3", "q4",
+    "pertumbuhan kumulatif", "c-to-c", "cumulative", "tahun berjalan",
+    "semester pertama", "semester kedua", "setengah tahun", "kumulatif", "tahun penuh",
+    "ctoc", "c to c", "cumulative on cumulative",
+
+    # Sector keywords
+    "tani", "tanam", "pangan", "ikan", "laut", "nelayan", "sawit", "padi", "buah",
+    "jagung", "kedelai", "gandum", "ubi", "sayuran", "tanaman pangan", "biji", "pokok", "hortikultura",
+    "sayur", "cabai", "tomat", "bawang", "hias", "kelapa", "pepaya", "kopi", "teh", "kakao",
+    "karet", "gula", "kebun", "ternak", "sapi", "kambing", "ayam", "unggas", "domba",
+    "rph", "potong hewan", "sembelih", "jasa tani", "buru", "hasil tani", "produk tani",
+    "daging", "bibit", "hutan", "tebang", "kayu", "kayu bulat", "panglong", "kayu lapis", "hutan lindung",
+    "hutan tropis", "reboisasi", "madu hutan", "walet", "akasia", "budidaya", "tangkap",
+    "tambak", "pancing", "udang", "lobster", "tembakau", "buahbuahan",
+
+    "tambang", "eksplorasi", "mineral", "gali", "sda", "sumber daya alam", "minyak bumi", "sumur minyak",
+    "panas bumi", "ladang gas", "minyak", "rig", "bor", "energi panas", "kilang minyak", "batu", "batu bara",
+    "bara", "kerikil", "lignit", "bijih", "bijih besi", "besi", "logam", "tembaga", "nikel", "emas", "perak",
+    "freeport", "pertamina", "ekstraksi", "smelter", "hilirisasi", "kapur", "gamping", "marmer", "pasir",
+    "granit", "esdm", "baja", "aluminium",
+
+    "olah", "pabrik", "barang", "industri", "tekstil", "olah makanan", "produktivitas",
+    "tenaga kerja", "pasar tenaga kerja", "sektor", "minyak sawit", "kelapa sawit", "kopra", "rokok", "cerutu",
+    "olah tembakau", "industri tekstil", "pakai jadi", "kain", "garmen", "kulit", "alas kaki", "sepatu", "tas",
+    "bambu", "rotan", "anyaman", "kertas", "produk kertas", "cetak", "kimia", "farmasi", "obat", "karet",
+    "plastik", "sintetis", "komputer", "elektronik", "optik", "mesin", "alat", "sepeda motor", "furnitur",
+    "mebel", "perabot", "reparasi",
+
+    "listrik", "energi", "transmisi", "distribusi", "tenaga", "pln", "bangkit", "gas", "gas alam", "pipa gas",
+    "kilang gas", "stasiun gas", "kelola", "energi baru", "energi fosil",
+
+    "air", "pdam", "air bersih", "sedia air", "sumber air", "distribusi air", "olah air", "manajemen air",
+    "sistem air", "air minum", "akses air", "air tanah", "sampah", "kelola sampah", "kumpul sampah", "sampah organik",
+    "sampah plastik", "tempat sampah", "sampah rumah tangga", "buang sampah", "pilah sampah", "pusat sampah", "daur ulang",
+    "tpa", "limbah padat", "limbah cair", "limbah", "kelola limbah", "buang limbah", "buang",
+
+    "infrastruktur", "bangun", "gedung", "jalan", "tol", "konstruksi", "proyek", "rumah", "jembatan", "bendung",
+    "waduk", "jasa konstruksi", "kontraktor", "teknik sipil", "rancang", "ikn",
+
+    "pasar", "dagang", "grosir", "eceran", "umkm", "menengah", "mikro",
+    "harga", "global", "kawasan", "neraca dagang", "nilai tukar", "konsumsi rumah tangga",
+    "indeks harga", "belanja", "ritel",
+
+    "angkut", "simpan", "kirim", "transportasi", "udara", "darat", "pesawat", "kapal", "kereta api",
+    "bis", "bus", "bus kota", "angkot", "mrt", "lrt", "krl", "busway", "transjakarta", "tiket",
+    "bandara", "stasiun", "terminal", "labuh", "mobil", "truk", "asdp", "transit", "maskapai", "terbang",
+    "logistik", "distribusi", "gudang", "kurir", "port", "halte", "warehouse",
+    "gudang barang", "rel", "feri", "seberang", "tumpang", "okupansi", "pos", "agen", "jnt", "jne", "libur",
+    "ojek", "ojol", "opang", "ojek online",
+
+    "akomodasi", "makan", "minum", "hotel", "restoran", "inap", "katering", "rumah makan", "hostel", "homestay",
+    "kafe", "warung", "kedai", "dapur", "pesan antar", "siap saji", "delivery", "resor", "villa", "wisata", "pariwisata",
+
+    "informasi", "telepon", "telekomunikasi", "media", "komunikasi", "internet", "teknologi", "berita",
+    "siar", "media sosial", "platform", "digital", "ti", "it", "sistem informasi", "aplikasi", "perangkat lunak",
+    "software", "cloud", "data center", "komputasi", "seluler", "jaringan", "nirkabel",
+    "satelit", "radio", "televisi", "pulsa",
+
+    "asuransi", "bank", "pasar modal", "modal", "deposito", "bunga", "uang", "pinjam", "simpan",
+    "ekonomi", "produk domestik bruto", "pdb", "gdp", "produk nasional bruto",
+    "ekonomi nasional", "investasi", "suku bunga", "indeks ekonomi", "stabilitas",
+    "nilai tukar", "neraca dagang", "angka", "moneter", "fiskal",
+
+    "properti", "aset", "real estat", "huni", "apartemen", "rumah", "rumah susun", "kontrak",
+    "kantor", "developer",
+
+    "riset", "kembang", "konsultan", "bisnis", "jasa hukum", "profesional", "ilmu", "teknis",
+    "intelektual", "konsultasi", "layan hukum", "advokat", "notaris", "administrasi",
+    "korporat", "korposari",
+
+    "layan publik", "perintah pusat", "perintah daerah", "kantor", "apbd", "apbn", "anggaran", "administrasi",
+    "birokrasi", "militer", "tentara", "tni", "polisi", "polri", "aparat", "intelijen", "jamsos", "asuransi",
+    "bpjs", "pensiun", "jaminan pekerjaan",
+
+    "didik tinggi", "formal", "didik", "siswa", "murid", "guru", "sekolah", "universitas", "guru tinggi",
+    "kursus", "bimbing", "seminar", "workshop", "vokasi",
+
+    "rumah sakit", "medis", "sehat", "sosial", "perawat", "klinik", "puskesmas", "dokter",
+    "tenaga medis", "rsud", "bantu", "dana sosial", "rehabilitasi", "asuh",
+
+    "seni", "hibur", "rekreasi", "layanan", "lainnya", "seni rupa", "musik", "tari", "film", "konser", "lukis",
+    "teater", "event", "eo", "organizer", "art", "pembantu", "badan internasional", "organisasi internasional",
+    "organisasi global", "pbb"
+]
+
+
 def fmt_ddmmyyyy(d):
     return d.strftime("%d/%m/%Y")
 
 
 def reset_downstream_state():
     st.session_state.df_clean = pd.DataFrame()
+    st.session_state.df_selected = pd.DataFrame()
     st.session_state.df_pred = pd.DataFrame()
     st.session_state.segments = {}
     st.session_state.avg_confidence = {}
@@ -160,6 +294,8 @@ def normalize_df(df: pd.DataFrame, source_name: str = "dataset.csv") -> pd.DataF
         "content": "",
         "segment": "",
         "neural_sentences": "",
+        "selected_sentences": "",
+        "selected_text": "",
         "sector_label": "",
         "pdb_label": "",
         "growth_label": "",
@@ -219,6 +355,10 @@ def parse_list_string(value):
 
 
 def choose_text_for_processing(row):
+    selected_list = parse_list_string(row.get("selected_sentences", ""))
+    if selected_list:
+        return " ".join(selected_list), selected_list, "selected_sentences"
+
     neural_list = parse_list_string(row.get("neural_sentences", ""))
     if neural_list:
         return " ".join(neural_list), neural_list, "neural_sentences"
@@ -264,6 +404,58 @@ def add_sector_emoji(value):
     }
 
     return mapping.get(s, str(value))
+
+
+def select_sentences_based_on_keywords(sentences, keywords):
+    selected = []
+    normalized_keywords = [str(k).strip().lower() for k in keywords if str(k).strip()]
+
+    for sentence in sentences:
+        s_low = str(sentence).lower()
+        if any(keyword in s_low for keyword in normalized_keywords):
+            selected.append(sentence)
+
+    return selected
+
+
+def extract_neural_sentences(sentences, keywords, sbert_model, top_k=5):
+    selected_sentences = select_sentences_based_on_keywords(sentences, keywords)
+
+    if not selected_sentences:
+        return [sentences[0]] if sentences else []
+
+    if len(selected_sentences) > 100:
+        selected_sentences = selected_sentences[:100]
+
+    sentence_embeddings = sbert_model.encode(
+        selected_sentences,
+        batch_size=32,
+        show_progress_bar=False
+    )
+
+    all_text = " ".join(selected_sentences)
+    words = re.findall(r"\b\w+\b", all_text.lower())
+
+    if not words:
+        return selected_sentences[:top_k]
+
+    unique_words = list(dict.fromkeys(words))
+    word_subset = unique_words[:500]
+
+    word_embeddings = sbert_model.encode(
+        word_subset,
+        batch_size=32,
+        show_progress_bar=False
+    )
+
+    cosine_similarities = cosine_similarity(sentence_embeddings, word_embeddings)
+    sentence_scores = cosine_similarities.mean(axis=1)
+
+    idx_sorted = sentence_scores.argsort()[::-1]
+    top_indices = idx_sorted[:top_k]
+
+    top_sentences = [selected_sentences[i] for i in top_indices]
+    return top_sentences
 
 # =========================
 # SIDEBAR
@@ -327,7 +519,7 @@ st.markdown("<hr>", unsafe_allow_html=True)
 # BUTTONS
 # =========================
 if data_source_mode == "Scraping Berita Real-Time":
-    b1, b2, b3, b4 = st.columns(4)
+    b1, b2, b3, b4, b5 = st.columns(5)
     with b1:
         save_clicked = st.button("Simpan Pilihan")
     with b2:
@@ -335,15 +527,19 @@ if data_source_mode == "Scraping Berita Real-Time":
     with b3:
         segment_clicked = st.button("Processing")
     with b4:
+        select_clicked = st.button("Seleksi Kalimat")
+    with b5:
         model_clicked = st.button("Klasifikasikan")
     load_csv_clicked = False
 else:
-    b1, b2, b3 = st.columns(3)
+    b1, b2, b3, b4 = st.columns(4)
     with b1:
         load_csv_clicked = st.button("Load CSV")
     with b2:
         segment_clicked = st.button("Processing")
     with b3:
+        select_clicked = st.button("Seleksi Kalimat")
+    with b4:
         model_clicked = st.button("Klasifikasikan")
     save_clicked = False
     scrape_clicked = False
@@ -503,13 +699,65 @@ if segment_clicked:
     st.session_state.segments = seg_map
 
     msg = "Processing selesai menggunakan "
-    if (df["segment_source"] == "neural_sentences").any():
+    if (df["segment_source"] == "selected_sentences").any():
+        msg += "selected_sentences."
+    elif (df["segment_source"] == "neural_sentences").any():
         msg += "neural_sentences."
     elif (df["segment_source"] == "content").any():
         msg += "content."
     else:
         msg += "title."
     st.success(msg)
+
+if select_clicked:
+    source_df = None
+
+    if st.session_state.df_clean is not None and not st.session_state.df_clean.empty:
+        source_df = st.session_state.df_clean.copy()
+    elif st.session_state.df_raw is not None and not st.session_state.df_raw.empty:
+        source_df = st.session_state.df_raw.copy()
+    else:
+        st.warning("Belum ada data. Lakukan scraping atau load CSV terlebih dahulu.")
+        st.stop()
+
+    if "content" not in source_df.columns:
+        st.error("Kolom content tidak ditemukan. Seleksi kalimat membutuhkan isi berita pada kolom content.")
+        st.stop()
+
+    sbert_model = load_sbert_model()
+
+    selected_sentences_col = []
+    selected_text_col = []
+
+    progress = st.progress(0)
+    total = len(source_df)
+
+    for i, row in source_df.iterrows():
+        content_text = str(row.get("content", "")).strip()
+        sentences = split_sentences(content_text)
+
+        selected_sentences = extract_neural_sentences(
+            sentences,
+            SELECTION_KEYWORDS,
+            sbert_model,
+            top_k=5
+        )
+
+        selected_sentences_col.append(selected_sentences)
+        selected_text_col.append(" ".join(selected_sentences))
+
+        progress.progress(int((i + 1) / total * 100))
+
+    source_df["selected_sentences"] = selected_sentences_col
+    source_df["selected_text"] = selected_text_col
+    source_df["text_for_processing"] = source_df["selected_text"].astype(str)
+    source_df["text_clean"] = source_df["text_for_processing"].astype(str).apply(clean_text)
+    source_df["segment_source"] = "selected_sentences"
+
+    st.session_state.df_selected = source_df
+    st.session_state.df_clean = source_df
+
+    st.success("Seleksi kalimat selesai. Kolom selected_sentences dan selected_text berhasil dibuat.")
 
 if model_clicked:
     if st.session_state.df_clean is None or st.session_state.df_clean.empty:
@@ -574,7 +822,9 @@ if model_clicked:
 # =========================
 st.subheader("Hasil Berita")
 
-df_show = st.session_state.df_pred if not st.session_state.df_pred.empty else st.session_state.df_raw
+df_show = st.session_state.df_pred if not st.session_state.df_pred.empty else (
+    st.session_state.df_clean if not st.session_state.df_clean.empty else st.session_state.df_raw
+)
 
 if df_show is None or df_show.empty:
     st.info("Belum ada data.")
@@ -652,7 +902,7 @@ else:
     if "source" in view_df.columns:
         gb.configure_column("source", header_name="Sumber", width=120)
     if "segment_source" in view_df.columns:
-        gb.configure_column("segment_source", header_name="Sumber Kalimat", width=140)
+        gb.configure_column("segment_source", header_name="Sumber Kalimat", width=150)
     if "sector_label_emoji" in view_df.columns:
         gb.configure_column("sector_label_emoji", header_name="Sektor", width=180)
     if "sector_confidence" in view_df.columns:
@@ -696,7 +946,15 @@ else:
             )
 
     with st.expander("Preview teks yang dipakai untuk processing"):
-        preview_cols = [c for c in ["title", "text_for_processing", "neural_sentences", "content"] if c in filtered.columns]
+        preview_cols = [
+            c for c in [
+                "title",
+                "selected_sentences",
+                "selected_text",
+                "text_for_processing",
+                "content"
+            ] if c in filtered.columns
+        ]
         if preview_cols:
             st.dataframe(filtered[preview_cols].head(5), use_container_width=True)
 
