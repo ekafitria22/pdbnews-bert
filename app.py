@@ -230,6 +230,41 @@ def choose_text_for_processing(row):
     title = str(row.get("title", "")).strip()
     return title, split_sentences(title), "title"
 
+
+def normalize_pdb_label(value):
+    s = str(value).strip().lower()
+    if s in {"1", "naik"}:
+        return "Naik"
+    if s in {"0", "-1", "turun"}:
+        return "Turun"
+    return str(value)
+
+
+def add_sector_emoji(value):
+    s = str(value).strip().lower()
+
+    mapping = {
+        "pertanian": "🌾 Pertanian",
+        "pertambangan": "⛏️ Pertambangan",
+        "industri": "🏭 Industri",
+        "listrik": "⚡ Listrik",
+        "air": "💧 Air",
+        "konstruksi": "🏗️ Konstruksi",
+        "perdagangan": "🛒 Perdagangan",
+        "transportasi": "🚚 Transportasi",
+        "akomodasi": "🏨 Akomodasi",
+        "informasi": "💻 Informasi",
+        "keuangan": "💰 Keuangan",
+        "real_estate": "🏠 Real Estate",
+        "jasa_profesional": "🧑‍💼 Jasa Profesional",
+        "pemerintahan": "🏛️ Pemerintahan",
+        "pendidikan": "🎓 Pendidikan",
+        "kesehatan": "🚑 Kesehatan",
+        "jasa_lainnya": "🧩 Jasa Lainnya",
+    }
+
+    return mapping.get(s, str(value))
+
 # =========================
 # SIDEBAR
 # =========================
@@ -551,43 +586,61 @@ df_show = st.session_state.df_pred if not st.session_state.df_pred.empty else st
 if df_show is None or df_show.empty:
     st.info("Belum ada data.")
 else:
-    filter_col1, filter_col2 = st.columns(2)
+    filtered = df_show.copy()
+
+    if "pdb_label" in filtered.columns:
+        filtered["pdb_label_display"] = filtered["pdb_label"].apply(normalize_pdb_label)
+    else:
+        filtered["pdb_label_display"] = ""
+
+    if "sector_label" in filtered.columns:
+        filtered["sector_label_emoji"] = filtered["sector_label"].apply(add_sector_emoji)
+    else:
+        filtered["sector_label_emoji"] = ""
+
+    filter_col1, filter_col2, filter_col3 = st.columns(3)
 
     with filter_col1:
         sector_options = ["Semua"]
-        if "sector_label" in df_show.columns:
-            vals = [str(x) for x in df_show["sector_label"].dropna().unique().tolist() if str(x).strip()]
+        if "sector_label" in filtered.columns:
+            vals = [str(x) for x in filtered["sector_label"].dropna().unique().tolist() if str(x).strip()]
             sector_options += sorted(vals)
         sector_filter = st.selectbox("Filter sektor", sector_options)
 
     with filter_col2:
-        segment_options = ["Semua"]
-        if "segment_source" in df_show.columns:
-            vals = [str(x) for x in df_show["segment_source"].dropna().unique().tolist() if str(x).strip()]
-            segment_options += sorted(vals)
-        segment_filter = st.selectbox("Filter sumber kalimat", segment_options)
+        pdb_options = ["Semua"]
+        if "pdb_label_display" in filtered.columns:
+            vals = [str(x) for x in filtered["pdb_label_display"].dropna().unique().tolist() if str(x).strip()]
+            pdb_options += sorted(vals)
+        pdb_filter = st.selectbox("Filter pergerakan PDB", pdb_options)
 
-    filtered = df_show.copy()
+    with filter_col3:
+        growth_options = ["Semua"]
+        if "growth_label" in filtered.columns:
+            vals = [str(x) for x in filtered["growth_label"].dropna().unique().tolist() if str(x).strip()]
+            growth_options += sorted(vals)
+        growth_filter = st.selectbox("Filter growth", growth_options)
+
     if sector_filter != "Semua" and "sector_label" in filtered.columns:
         filtered = filtered[filtered["sector_label"].astype(str) == sector_filter].copy()
-    if segment_filter != "Semua" and "segment_source" in filtered.columns:
-        filtered = filtered[filtered["segment_source"].astype(str) == segment_filter].copy()
 
-    if "pdb_label" in filtered.columns:
-        def label_with_color(x):
-            s = str(x).strip().lower()
-            if s in {"1", "naik"}:
-                return "🟢 Naik"
-            if s in {"0", "-1", "turun"}:
-                return "🔴 Turun"
-            return str(x)
-        filtered["pdb_label_color"] = filtered["pdb_label"].apply(label_with_color)
+    if pdb_filter != "Semua" and "pdb_label_display" in filtered.columns:
+        filtered = filtered[filtered["pdb_label_display"].astype(str) == pdb_filter].copy()
+
+    if growth_filter != "Semua" and "growth_label" in filtered.columns:
+        filtered = filtered[filtered["growth_label"].astype(str) == growth_filter].copy()
+
+    if "pdb_label_display" in filtered.columns:
+        filtered["pdb_label_color"] = filtered["pdb_label_display"].apply(
+            lambda x: "🟢 Naik" if str(x).strip().lower() == "naik"
+            else ("🔴 Turun" if str(x).strip().lower() == "turun" else str(x))
+        )
     else:
         filtered["pdb_label_color"] = ""
 
     cols_to_show = [
         "title", "publish_date", "category", "source",
-        "segment_source", "sector_label", "sector_confidence",
+        "segment_source", "sector_label_emoji", "sector_confidence",
         "pdb_label_color", "pdb_confidence",
         "growth_label", "growth_confidence"
     ]
@@ -607,8 +660,8 @@ else:
         gb.configure_column("source", header_name="Sumber", width=120)
     if "segment_source" in view_df.columns:
         gb.configure_column("segment_source", header_name="Sumber Kalimat", width=140)
-    if "sector_label" in view_df.columns:
-        gb.configure_column("sector_label", header_name="Sektor", width=140)
+    if "sector_label_emoji" in view_df.columns:
+        gb.configure_column("sector_label_emoji", header_name="Sektor", width=180)
     if "sector_confidence" in view_df.columns:
         gb.configure_column("sector_confidence", header_name="Conf. Sektor", width=120)
     if "pdb_label_color" in view_df.columns:
@@ -655,7 +708,7 @@ else:
             st.dataframe(filtered[preview_cols].head(5), use_container_width=True)
 
     st.markdown("### Download hasil")
-    st.caption("Gunakan tombol di bawah untuk menyimpan hasil ke komputer Anda.")
+    st.caption("Confidence ikut tersimpan di file CSV dan Excel yang didownload.")
 
     download_col1, download_col2 = st.columns(2)
 
