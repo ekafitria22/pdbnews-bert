@@ -14,7 +14,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from huggingface_hub import hf_hub_download
 from st_aggrid import AgGrid, GridOptionsBuilder
 
-from utils.constants import APP_TITLE, CATEGORY_SITEID, NEWS_TYPE_OPTIONS, KEYWORD_HINT
+from utils.constants import APP_TITLE, CATEGORY_SITEID, KEYWORD_HINT
 from utils.scraper_detik import scrape_detik_search
 from utils.text_utils import (
     clean_text,
@@ -503,7 +503,13 @@ with st.sidebar:
 # INPUT AREA
 # =========================
 if data_source_mode == "Scraping Berita Real-Time":
-    st.subheader("Parameter Scraping")
+    st.subheader("Scraping Berita")
+
+    topic_mode = st.radio(
+        "Topik Berita",
+        options=["Cari topik berita", "Topik berita campuran"],
+        horizontal=True,
+    )
 
     c1, c2 = st.columns(2)
     with c1:
@@ -511,20 +517,33 @@ if data_source_mode == "Scraping Berita Real-Time":
     with c2:
         end_date = st.date_input("Tanggal Akhir")
 
-    news_type = st.selectbox("Jenis Berita", options=NEWS_TYPE_OPTIONS)
-    keywords = st.text_input("Kata kunci berita", value="pdb")
+    if topic_mode == "Cari topik berita":
+        keywords = st.text_input("Cari topik berita", value="pdb")
+        show_notes = st.checkbox("Tampilkan contoh keyword")
+        if show_notes:
+            st.write(", ".join(KEYWORD_HINT))
+    else:
+        keywords = "+"
 
-    show_notes = st.checkbox("Tampilkan contoh keyword")
-    if show_notes:
-        st.write(", ".join(KEYWORD_HINT))
+    cat_label = st.selectbox(
+        "Kategori Berita",
+        options=["Semua Kategori"] + list(CATEGORY_SITEID.keys())
+    )
 
-    cat_label = st.selectbox("Kategori Detik", options=["Semua"] + list(CATEGORY_SITEID.keys()))
-    exclude_advertorial = st.checkbox("Kecualikan artikel advertorial", value=True)
-    max_articles = st.slider("Maksimal artikel", 5, 200, 30, 5)
+    include_advertorial = st.radio(
+        "Sertakan artikel advertorial?",
+        options=["Ya", "Tidak"],
+        horizontal=True,
+        index=1,
+    )
+
+    max_articles = st.slider("Jumlah artikel yang ingin diekstrak", 5, 200, 30, 5)
 
     with st.expander("Pengaturan request (advanced)"):
         sleep_s = st.slider("Delay per request (detik)", 0.5, 3.0, 1.5, 0.1)
         timeout = st.slider("Timeout (detik)", 10, 60, 30, 5)
+
+    exclude_advertorial = include_advertorial == "Tidak"
 
 else:
     st.subheader("Load Dataset CSV")
@@ -573,14 +592,15 @@ else:
 # =========================
 if save_clicked and data_source_mode == "Scraping Berita Real-Time":
     st.session_state.params = {
+        "topic_mode": topic_mode,
         "start_date": start_date,
         "end_date": end_date,
-        "news_type": news_type,
         "keywords": keywords.strip(),
         "cat_label": cat_label,
         "max_articles": int(max_articles),
         "sleep_s": float(sleep_s),
         "timeout": int(timeout),
+        "include_advertorial": include_advertorial,
         "exclude_advertorial": bool(exclude_advertorial),
     }
     st.success("Pilihan tersimpan.")
@@ -611,9 +631,10 @@ if load_csv_clicked and data_source_mode == "Load CSV Berita Tersimpan":
         st.error(f"Gagal load CSV: {e}")
 
 if scrape_clicked and data_source_mode == "Scraping Berita Real-Time":
-    if not keywords.strip():
-        st.error("Keyword tidak boleh kosong.")
+    if topic_mode == "Cari topik berita" and not keywords.strip():
+        st.error("Pencarian topik berita tidak boleh kosong.")
         st.stop()
+
     if end_date < start_date:
         st.error("Tanggal akhir harus >= tanggal mulai.")
         st.stop()
@@ -632,7 +653,7 @@ if scrape_clicked and data_source_mode == "Scraping Berita Real-Time":
     try:
         df_raw = pd.DataFrame()
 
-        if cat_label == "Semua":
+        if cat_label == "Semua Kategori":
             dfs = []
             total_cat = len(CATEGORY_SITEID)
             for i, (name, siteid) in enumerate(CATEGORY_SITEID.items(), start=1):
@@ -655,8 +676,11 @@ if scrape_clicked and data_source_mode == "Scraping Berita Real-Time":
                         dfs.append(df)
                 except Exception as e:
                     scrape_errors.append(f"{name}: {e}")
+
                 progress.progress(int((i / total_cat) * 100))
+
             df_raw = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+
         else:
             siteid = CATEGORY_SITEID[cat_label]
             try:
@@ -690,13 +714,15 @@ if scrape_clicked and data_source_mode == "Scraping Berita Real-Time":
         reset_downstream_state()
 
         progress.progress(100)
+
         if scrape_errors:
             st.warning("Sebagian scraping gagal:\n\n" + "\n".join([str(x) for x in scrape_errors[:10]]))
 
         if df_raw.empty:
-            st.warning("Tidak ada artikel ditemukan.")
+            st.warning(f'Tidak ada artikel yang ditemukan mengenai "{keywords}".')
         else:
             st.success(f"Selesai scraping. Total artikel: {len(df_raw)}")
+
     except Exception as e:
         st.error(f"Terjadi error saat scraping: {e}")
 
