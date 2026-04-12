@@ -1,9 +1,9 @@
 import os
 import ast
 import pickle
-from datetime import datetime
-
+import csv
 from io import BytesIO
+
 import pandas as pd
 import streamlit as st
 import torch
@@ -40,10 +40,6 @@ div.stButton > button {
     border: 0px;
     font-weight: 600;
 }
-.btn-save  div.stButton > button {background:#28a745;color:white;}
-.btn-proc  div.stButton > button {background:#007bff;color:white;}
-.btn-seg   div.stButton > button {background:#FF9800;color:white;}
-.btn-model div.stButton > button {background:#ffc107;color:black;}
 .small-note {font-size: 13px; opacity: 0.8;}
 </style>
 """, unsafe_allow_html=True)
@@ -183,6 +179,24 @@ def normalize_df(df: pd.DataFrame, source_name: str = "dataset.csv") -> pd.DataF
     return df
 
 
+def robust_read_csv(path_or_buffer):
+    attempts = [
+        {"sep": ",", "engine": "python", "quoting": csv.QUOTE_MINIMAL},
+        {"sep": ",", "engine": "python", "on_bad_lines": "skip"},
+        {"sep": None, "engine": "python", "on_bad_lines": "skip"},
+    ]
+
+    last_error = None
+    for kwargs in attempts:
+        try:
+            return pd.read_csv(path_or_buffer, **kwargs)
+        except Exception as e:
+            last_error = e
+            continue
+
+    raise ValueError(f"Gagal membaca CSV. Error terakhir: {last_error}")
+
+
 def parse_list_string(value):
     if pd.isna(value):
         return []
@@ -214,39 +228,6 @@ def choose_text_for_processing(row):
     title = str(row.get("title", "")).strip()
     return title, split_sentences(title), "title"
 
-
-def has_labels(df: pd.DataFrame) -> bool:
-    needed = ["sector_label", "pdb_label", "growth_label"]
-    if not all(col in df.columns for col in needed):
-        return False
-    return df[needed].notna().any(axis=1).any()
-
-
-def safe_filename(prefix: str, ext: str = "csv") -> str:
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return f"{prefix}_{ts}.{ext}"
-
-
-def save_dataframe(df: pd.DataFrame, save_mode: str, base_dir: str = "."):
-    os.makedirs(base_dir, exist_ok=True)
-
-    if save_mode == "Simpan sebagai file baru":
-        path = os.path.join(base_dir, safe_filename("hasil_berita", "csv"))
-        df.to_csv(path, index=False)
-        return path
-
-    master_path = os.path.join(base_dir, "dataset_master.csv")
-    if os.path.exists(master_path):
-        master_df = pd.read_csv(master_path)
-        combined = pd.concat([master_df, df], ignore_index=True)
-        dedup_col = "article_url" if "article_url" in combined.columns else None
-        if dedup_col:
-            combined = combined.drop_duplicates(subset=[dedup_col]).reset_index(drop=True)
-        combined.to_csv(master_path, index=False)
-    else:
-        df.to_csv(master_path, index=False)
-    return master_path
-
 # =========================
 # SIDEBAR
 # =========================
@@ -262,9 +243,9 @@ with st.sidebar:
     if models_ready():
         st.success("3 model terdeteksi.")
     else:
-        st.warning("Model belum lengkap. Cek folder category/movement/growth.")
+        st.warning("Model belum lengkap. Cek folder category, movement, growth.")
 
-    st.caption("Rekomendasi: hasil scraping baru disimpan sebagai file CSV baru. Dataset lama tetap dijaga sebagai master.")
+    st.caption("Hasil tidak disimpan permanen di server. Gunakan tombol download untuk menyimpan ke komputer Anda.")
 
 # =========================
 # INPUT AREA
@@ -292,12 +273,6 @@ if data_source_mode == "Scraping Live":
         sleep_s = st.slider("Delay per request (detik)", 0.3, 3.0, 1.2, 0.1)
         timeout = st.slider("Timeout (detik)", 5, 60, 30, 5)
 
-    save_mode = st.radio(
-        "Mode simpan hasil:",
-        ["Simpan sebagai file baru", "Append ke dataset_master.csv"],
-        horizontal=True
-    )
-
 else:
     st.subheader("Load Dataset CSV")
     csv_mode = st.radio(
@@ -315,7 +290,7 @@ st.markdown("<hr>", unsafe_allow_html=True)
 # BUTTONS
 # =========================
 if data_source_mode == "Scraping Live":
-    b1, b2, b3, b4, b5 = st.columns(5)
+    b1, b2, b3, b4 = st.columns(4)
     with b1:
         save_clicked = st.button("Simpan Pilihan")
     with b2:
@@ -324,22 +299,17 @@ if data_source_mode == "Scraping Live":
         segment_clicked = st.button("Processing")
     with b4:
         model_clicked = st.button("Klasifikasikan")
-    with b5:
-        persist_clicked = st.button("Simpan Hasil ke CSV")
     load_csv_clicked = False
 else:
-    b1, b2, b3, b4 = st.columns(4)
+    b1, b2, b3 = st.columns(3)
     with b1:
         load_csv_clicked = st.button("Load CSV")
     with b2:
         segment_clicked = st.button("Processing")
     with b3:
         model_clicked = st.button("Klasifikasikan")
-    with b4:
-        persist_clicked = st.button("Simpan Ulang ke CSV")
     save_clicked = False
     scrape_clicked = False
-    save_mode = "Simpan sebagai file baru"
 
 # =========================
 # ACTIONS
@@ -364,20 +334,20 @@ if load_csv_clicked and data_source_mode == "Load CSV Tersimpan":
             if not os.path.exists(path):
                 st.error("File dataset.csv tidak ditemukan.")
                 st.stop()
-            df_raw = pd.read_csv(path)
+            df_raw = robust_read_csv(path)
             loaded_from = path
         elif csv_mode == "Gunakan file lokal dataset_master.csv":
             path = "dataset_master.csv"
             if not os.path.exists(path):
                 st.error("File dataset_master.csv tidak ditemukan.")
                 st.stop()
-            df_raw = pd.read_csv(path)
+            df_raw = robust_read_csv(path)
             loaded_from = path
         else:
             if uploaded_csv is None:
                 st.error("Silakan upload CSV terlebih dahulu.")
                 st.stop()
-            df_raw = pd.read_csv(uploaded_csv)
+            df_raw = robust_read_csv(uploaded_csv)
             loaded_from = uploaded_csv.name
 
         df_raw = normalize_df(df_raw, source_name=loaded_from)
@@ -563,18 +533,6 @@ if model_clicked:
     except Exception as e:
         st.error(f"Gagal menjalankan model: {e}")
 
-if persist_clicked:
-    df_to_save = st.session_state.df_pred if not st.session_state.df_pred.empty else st.session_state.df_raw
-    if df_to_save is None or df_to_save.empty:
-        st.warning("Tidak ada data untuk disimpan.")
-        st.stop()
-
-    try:
-        saved_path = save_dataframe(df_to_save, save_mode=save_mode, base_dir=".")
-        st.success(f"Data berhasil disimpan ke: {saved_path}")
-    except Exception as e:
-        st.error(f"Gagal menyimpan data: {e}")
-
 # =========================
 # DISPLAY
 # =========================
@@ -662,9 +620,10 @@ else:
             st.dataframe(filtered[preview_cols].head(5), use_container_width=True)
 
     st.markdown("### Download hasil")
+    st.caption("Gunakan tombol di bawah untuk menyimpan hasil ke komputer Anda.")
+
     download_col1, download_col2 = st.columns(2)
 
-    # CSV
     csv_bytes = filtered.to_csv(index=False).encode("utf-8")
     with download_col1:
         st.download_button(
@@ -674,7 +633,6 @@ else:
             mime="text/csv",
         )
 
-    # Excel
     excel_buffer = BytesIO()
     with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
         filtered.to_excel(writer, index=False, sheet_name="hasil_berita")
@@ -687,30 +645,3 @@ else:
             file_name="hasil_berita_ekonomi.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-    
-
-# =========================
-# METRICS PLACEHOLDER
-# =========================
-st.markdown("<br>", unsafe_allow_html=True)
-st.subheader("Metrik Model")
-
-def colored_metric(label, value, color):
-    st.markdown(f"""
-    <div style="padding: 8px; border-radius: 6px; background-color: {color}; color: white; text-align: center;">
-        <div style="font-weight:700;">{label}</div>
-        <div style="font-size: 22px; font-weight: 800;">{value}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-c1, c2, c3, c4 = st.columns(4)
-with c1:
-    colored_metric("Akurasi", "—", "#FF9800")
-with c2:
-    colored_metric("Presisi", "—", "#4CAF50")
-with c3:
-    colored_metric("Recall", "—", "#FFD700")
-with c4:
-    colored_metric("F1-Score", "—", "#2196F3")
-
-st.caption("Metrik ringkas di atas masih placeholder. Hasil prediksi tabel sudah memakai model category, movement, dan growth.")
