@@ -1,15 +1,30 @@
-
 import os
 import ast
+import pickle
 from datetime import datetime
 
 import pandas as pd
 import streamlit as st
+import torch
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from st_aggrid import AgGrid, GridOptionsBuilder
 
 from utils.constants import APP_TITLE, CATEGORY_SITEID, NEWS_TYPE_OPTIONS, KEYWORD_HINT
 from utils.scraper_detik import scrape_detik_search
 from utils.text_utils import clean_text, split_sentences
+
+# =========================
+# MODEL PATHS
+# =========================
+CATEGORY_MODEL_DIR = "./category"
+MOVEMENT_MODEL_DIR = "./movement"
+GROWTH_MODEL_DIR = "./growth"
+
+CATEGORY_ENCODER = "label_encoder_category.pkl"
+MOVEMENT_ENCODER = "label_encoder_movement.pkl"
+GROWTH_ENCODER = "label_encoder_growth.pkl"
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # =========================
 # CONFIG
@@ -62,6 +77,65 @@ for key, default in {
     if key not in st.session_state:
         st.session_state[key] = default
 
+# =========================
+# MODEL LOADER
+# =========================
+@st.cache_resource
+def load_model_bundle(model_dir, encoder_filename):
+    tokenizer = AutoTokenizer.from_pretrained(model_dir)
+    model = AutoModelForSequenceClassification.from_pretrained(model_dir)
+    model.to(DEVICE)
+    model.eval()
+
+    encoder_path = os.path.join(model_dir, encoder_filename)
+    with open(encoder_path, "rb") as f:
+        label_encoder = pickle.load(f)
+
+    return tokenizer, model, label_encoder
+
+
+@st.cache_resource
+def load_all_models():
+    category_bundle = load_model_bundle(CATEGORY_MODEL_DIR, CATEGORY_ENCODER)
+    movement_bundle = load_model_bundle(MOVEMENT_MODEL_DIR, MOVEMENT_ENCODER)
+    growth_bundle = load_model_bundle(GROWTH_MODEL_DIR, GROWTH_ENCODER)
+    return category_bundle, movement_bundle, growth_bundle
+
+
+def models_ready():
+    checks = [
+        os.path.exists(os.path.join(CATEGORY_MODEL_DIR, "config.json")),
+        os.path.exists(os.path.join(CATEGORY_MODEL_DIR, CATEGORY_ENCODER)),
+        os.path.exists(os.path.join(MOVEMENT_MODEL_DIR, "config.json")),
+        os.path.exists(os.path.join(MOVEMENT_MODEL_DIR, MOVEMENT_ENCODER)),
+        os.path.exists(os.path.join(GROWTH_MODEL_DIR, "config.json")),
+        os.path.exists(os.path.join(GROWTH_MODEL_DIR, GROWTH_ENCODER)),
+    ]
+    return all(checks)
+
+
+def predict_single_text(text, tokenizer, model, encoder, max_length=512):
+    text = str(text).strip()
+    if not text:
+        return "", 0.0
+
+    inputs = tokenizer(
+        text,
+        return_tensors="pt",
+        truncation=True,
+        padding=True,
+        max_length=max_length
+    )
+    inputs = {k: v.to(DEVICE) for k, v in inputs.items()}
+
+    with torch.no_grad():
+        outputs = model(**inputs)
+        probs = torch.softmax(outputs.logits, dim=-1)
+        pred_idx = torch.argmax(probs, dim=-1).item()
+        confidence = probs[0, pred_idx].item()
+
+    label = encoder.inverse_transform([pred_idx])[0]
+    return label, confidence
 
 # =========================
 # HELPERS
@@ -102,7 +176,6 @@ def normalize_df(df: pd.DataFrame, source_name: str = "dataset.csv") -> pd.DataF
             else:
                 df[col] = val
 
-    # kosongkan source yang null
     df["source"] = df["source"].fillna(source_name)
     df["article_url"] = df["article_url"].astype(str)
     df["title"] = df["title"].astype(str)
@@ -129,12 +202,6 @@ def parse_list_string(value):
 
 
 def choose_text_for_processing(row):
-    """
-    Prioritas:
-    1. neural_sentences
-    2. content
-    3. title
-    """
     neural_list = parse_list_string(row.get("neural_sentences", ""))
     if neural_list:
         return " ".join(neural_list), neural_list, "neural_sentences"
@@ -167,7 +234,6 @@ def save_dataframe(df: pd.DataFrame, save_mode: str, base_dir: str = "."):
         df.to_csv(path, index=False)
         return path
 
-    # append master
     master_path = os.path.join(base_dir, "dataset_master.csv")
     if os.path.exists(master_path):
         master_df = pd.read_csv(master_path)
@@ -179,7 +245,6 @@ def save_dataframe(df: pd.DataFrame, save_mode: str, base_dir: str = "."):
     else:
         df.to_csv(master_path, index=False)
     return master_path
-
 
 # =========================
 # SIDEBAR
@@ -193,8 +258,12 @@ with st.sidebar:
     )
 
     st.markdown("---")
-    st.caption("Rekomendasi: hasil scraping baru disimpan sebagai file CSV baru. Dataset lama tetap dijaga sebagai master.")
+    if models_ready():
+        st.success("3 model terdeteksi.")
+    else:
+        st.warning("Model belum lengkap. Cek folder category/movement/growth.")
 
+    st.caption("Rekomendasi: hasil scraping baru disimpan sebagai file CSV baru. Dataset lama tetap dijaga sebagai master.")
 
 # =========================
 # INPUT AREA
@@ -446,27 +515,52 @@ if model_clicked:
         st.warning("Belum ada data hasil processing.")
         st.stop()
 
-    df = st.session_state.df_clean.copy()
+    if not models_ready():
+        st.error("Folder model/encoder belum lengkap. Cek category, movement, dan growth.")
+        st.stop()
 
-    if has_labels(df):
-        st.session_state.df_pred = df
-        st.success("Label dari dataset digunakan langsung.")
-    else:
-        def dummy_pdb_label(t):
-            t = str(t).lower()
-            if any(k in t for k in ["naik", "tumbuh", "menguat", "meningkat"]):
-                return "Naik"
-            if any(k in t for k in ["turun", "melemah", "anjlok", "menurun", "kontraksi"]):
-                return "Turun"
-            return "Tidak diketahui"
+    try:
+        (category_tokenizer, category_model, category_encoder), \
+        (movement_tokenizer, movement_model, movement_encoder), \
+        (growth_tokenizer, growth_model, growth_encoder) = load_all_models()
 
-        df["pdb_label"] = df["text_for_processing"].astype(str).apply(dummy_pdb_label)
-        if "sector_label" not in df.columns:
-            df["sector_label"] = ""
-        if "growth_label" not in df.columns:
-            df["growth_label"] = ""
+        df = st.session_state.df_clean.copy()
+
+        progress = st.progress(0)
+        total = len(df)
+
+        sector_preds = []
+        sector_confs = []
+        movement_preds = []
+        movement_confs = []
+        growth_preds = []
+        growth_confs = []
+
+        for i, text in enumerate(df["text_for_processing"].astype(str).tolist(), start=1):
+            sector_label, sector_conf = predict_single_text(text, category_tokenizer, category_model, category_encoder)
+            movement_label, movement_conf = predict_single_text(text, movement_tokenizer, movement_model, movement_encoder)
+            growth_label, growth_conf = predict_single_text(text, growth_tokenizer, growth_model, growth_encoder)
+
+            sector_preds.append(sector_label)
+            sector_confs.append(sector_conf)
+            movement_preds.append(movement_label)
+            movement_confs.append(movement_conf)
+            growth_preds.append(growth_label)
+            growth_confs.append(growth_conf)
+
+            progress.progress(int((i / total) * 100))
+
+        df["sector_label"] = sector_preds
+        df["sector_confidence"] = sector_confs
+        df["pdb_label"] = movement_preds
+        df["pdb_confidence"] = movement_confs
+        df["growth_label"] = growth_preds
+        df["growth_confidence"] = growth_confs
+
         st.session_state.df_pred = df
-        st.success("Klasifikasi dummy selesai.")
+        st.success("Klasifikasi model selesai.")
+    except Exception as e:
+        st.error(f"Gagal menjalankan model: {e}")
 
 if persist_clicked:
     df_to_save = st.session_state.df_pred if not st.session_state.df_pred.empty else st.session_state.df_raw
@@ -517,7 +611,7 @@ else:
             s = str(x).strip().lower()
             if s in {"1", "naik"}:
                 return "🟢 Naik"
-            if s in {"0", "turun"}:
+            if s in {"0", "-1", "turun"}:
                 return "🔴 Turun"
             return str(x)
         filtered["pdb_label_color"] = filtered["pdb_label"].apply(label_with_color)
@@ -526,7 +620,9 @@ else:
 
     cols_to_show = [
         "title", "publish_date", "category", "source",
-        "segment_source", "sector_label", "pdb_label_color", "growth_label"
+        "segment_source", "sector_label", "sector_confidence",
+        "pdb_label_color", "pdb_confidence",
+        "growth_label", "growth_confidence"
     ]
     cols_to_show = [c for c in cols_to_show if c in filtered.columns]
     view_df = filtered[cols_to_show].reset_index(drop=True)
@@ -545,10 +641,16 @@ else:
         gb.configure_column("segment_source", header_name="Sumber Kalimat", width=140)
     if "sector_label" in view_df.columns:
         gb.configure_column("sector_label", header_name="Sektor", width=140)
+    if "sector_confidence" in view_df.columns:
+        gb.configure_column("sector_confidence", header_name="Conf. Sektor", width=120)
     if "pdb_label_color" in view_df.columns:
         gb.configure_column("pdb_label_color", header_name="Pergerakan PDB", width=140)
+    if "pdb_confidence" in view_df.columns:
+        gb.configure_column("pdb_confidence", header_name="Conf. PDB", width=110)
     if "growth_label" in view_df.columns:
         gb.configure_column("growth_label", header_name="Growth", width=120)
+    if "growth_confidence" in view_df.columns:
+        gb.configure_column("growth_confidence", header_name="Conf. Growth", width=130)
 
     AgGrid(view_df, gridOptions=gb.build(), height=420)
 
@@ -589,4 +691,4 @@ with c3:
 with c4:
     colored_metric("F1-Score", "—", "#2196F3")
 
-st.caption("Untuk dataset berlabel, tabel memakai label asli dataset. Untuk scraping baru tanpa model final terintegrasi, aplikasi memakai placeholder klasifikasi.")
+st.caption("Metrik ringkas di atas masih placeholder. Hasil prediksi tabel sudah memakai model category, movement, dan growth.")
