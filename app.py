@@ -11,6 +11,7 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from huggingface_hub import hf_hub_download
 from st_aggrid import AgGrid, GridOptionsBuilder
 
 from utils.constants import APP_TITLE, CATEGORY_SITEID, NEWS_TYPE_OPTIONS, KEYWORD_HINT
@@ -23,11 +24,11 @@ from utils.text_utils import (
 )
 
 # =========================
-# MODEL PATHS
+# MODEL PATHS (HUGGING FACE)
 # =========================
-CATEGORY_MODEL_DIR = "./category"
-MOVEMENT_MODEL_DIR = "./movement"
-GROWTH_MODEL_DIR = "./growth"
+CATEGORY_MODEL_DIR = "ekafitria22/IndoRoBERTa-Base-PDBNews-Category"
+MOVEMENT_MODEL_DIR = "ekafitria22/IndoRoBERTa-Base-PDBNews-Movement"
+GROWTH_MODEL_DIR = "ekafitria22/IndoRoBERTa-Base-PDBNews-Growth"
 
 CATEGORY_ENCODER = "label_encoder_category.pkl"
 MOVEMENT_ENCODER = "label_encoder_movement.pkl"
@@ -90,13 +91,17 @@ for key, default in {
 # MODEL LOADER
 # =========================
 @st.cache_resource
-def load_model_bundle(model_dir, encoder_filename):
-    tokenizer = AutoTokenizer.from_pretrained(model_dir)
-    model = AutoModelForSequenceClassification.from_pretrained(model_dir)
+def load_model_bundle(model_repo_id: str, encoder_filename: str):
+    tokenizer = AutoTokenizer.from_pretrained(model_repo_id)
+    model = AutoModelForSequenceClassification.from_pretrained(model_repo_id)
     model.to(DEVICE)
     model.eval()
 
-    encoder_path = os.path.join(model_dir, encoder_filename)
+    encoder_path = hf_hub_download(
+        repo_id=model_repo_id,
+        filename=encoder_filename,
+        repo_type="model",
+    )
     with open(encoder_path, "rb") as f:
         label_encoder = pickle.load(f)
 
@@ -116,19 +121,29 @@ def load_sbert_model():
     return SentenceTransformer(SBERT_MODEL_NAME)
 
 
-def models_ready():
-    checks = [
-        os.path.exists(os.path.join(CATEGORY_MODEL_DIR, "config.json")),
-        os.path.exists(os.path.join(CATEGORY_MODEL_DIR, CATEGORY_ENCODER)),
-        os.path.exists(os.path.join(MOVEMENT_MODEL_DIR, "config.json")),
-        os.path.exists(os.path.join(MOVEMENT_MODEL_DIR, MOVEMENT_ENCODER)),
-        os.path.exists(os.path.join(GROWTH_MODEL_DIR, "config.json")),
-        os.path.exists(os.path.join(GROWTH_MODEL_DIR, GROWTH_ENCODER)),
-    ]
-    return all(checks)
+def models_ready() -> bool:
+    try:
+        hf_hub_download(
+            repo_id=CATEGORY_MODEL_DIR,
+            filename=CATEGORY_ENCODER,
+            repo_type="model",
+        )
+        hf_hub_download(
+            repo_id=MOVEMENT_MODEL_DIR,
+            filename=MOVEMENT_ENCODER,
+            repo_type="model",
+        )
+        hf_hub_download(
+            repo_id=GROWTH_MODEL_DIR,
+            filename=GROWTH_ENCODER,
+            repo_type="model",
+        )
+        return True
+    except Exception:
+        return False
 
 
-def predict_single_text(text, tokenizer, model, encoder, max_length=512):
+def predict_single_text(text: str, tokenizer, model, encoder, max_length: int = 512):
     text = str(text).strip()
     if not text:
         return "", 0.0
@@ -155,7 +170,6 @@ def predict_single_text(text, tokenizer, model, encoder, max_length=512):
 # HELPERS
 # =========================
 SELECTION_KEYWORDS = [
-    # Movement / arah ekonomi
     "naik", "tumbuh", "tingkat", "positif", "optimis", "kuat",
     "lonjak", "puncak", "baik", "pulih", "lebih", "deflasi", "stimulus",
     "bangun ekonomi", "surplus", "capai", "hijau", "peningkatan", "peluang",
@@ -183,7 +197,6 @@ SELECTION_KEYWORDS = [
     "beban utang tinggi", "kelemahan investasi", "turunnya ekspor", "krisis ketenagakerjaan",
     "pengangguran meningkat", "defisit fiskal",
 
-    # Growth
     "tahun", "perbandingan tahunan", "dari tahun ke tahun", "pertumbuhan tahunan",
     "perbandingan tahun sebelumnya", "pertumbuhan ekonomi tahun ini", "analisis tahunan",
     "yoy", "y o y", "y-o-y", "year-on-year", "year on year",
@@ -195,7 +208,6 @@ SELECTION_KEYWORDS = [
     "semester pertama", "semester kedua", "setengah tahun", "kumulatif", "tahun penuh",
     "ctoc", "c to c", "cumulative on cumulative",
 
-    # Sector keywords
     "tani", "tanam", "pangan", "ikan", "laut", "nelayan", "sawit", "padi", "buah",
     "jagung", "kedelai", "gandum", "ubi", "sayuran", "tanaman pangan", "biji", "pokok", "hortikultura",
     "sayur", "cabai", "tomat", "bawang", "hias", "kelapa", "pepaya", "kopi", "teh", "kakao",
@@ -429,7 +441,7 @@ def select_sentences_based_on_keywords(sentences, keywords):
     return selected
 
 
-def extract_neural_sentences(sentences, keywords, sbert_model, top_k=5):
+def extract_neural_sentences(sentences, keywords, sbert_model, top_k: int = 5):
     selected_sentences = select_sentences_based_on_keywords(sentences, keywords)
 
     if not selected_sentences:
@@ -481,9 +493,9 @@ with st.sidebar:
 
     st.markdown("---")
     if models_ready():
-        st.success("3 model terdeteksi.")
+        st.success("3 model terdeteksi dari Hugging Face.")
     else:
-        st.warning("Model belum lengkap. Cek folder category, movement, growth.")
+        st.warning("Model atau label encoder dari Hugging Face belum bisa diakses.")
 
     st.caption("Hasil tidak disimpan permanen di server. Gunakan tombol download untuk menyimpan ke komputer Anda.")
 
@@ -808,7 +820,7 @@ if model_clicked:
         st.stop()
 
     if not models_ready():
-        st.error("Folder model/encoder belum lengkap. Cek category, movement, dan growth.")
+        st.error("Model dari Hugging Face belum siap diakses.")
         st.stop()
 
     try:
@@ -1001,7 +1013,7 @@ else:
             ] if c in filtered.columns
         ]
         if preview_cols:
-            st.dataframe(filtered[preview_cols].head(5), use_container_width=True)
+            st.dataframe(filtered[preview_cols].head(5), width="stretch")
 
     st.markdown("### Download hasil")
     st.caption("Confidence ikut tersimpan di file CSV dan Excel yang didownload.")
