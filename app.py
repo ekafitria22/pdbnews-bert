@@ -23,9 +23,6 @@ from utils.text_utils import (
     split_sentences,
 )
 
-# =========================
-# MODEL PATHS (HUGGING FACE)
-# =========================
 CATEGORY_MODEL_DIR = "ekafitria22/IndoRoBERTa-Base-PDBNews-Category"
 MOVEMENT_MODEL_DIR = "ekafitria22/IndoRoBERTa-Base-PDBNews-Movement"
 GROWTH_MODEL_DIR = "ekafitria22/IndoRoBERTa-Base-PDBNews-Growth"
@@ -38,9 +35,6 @@ SBERT_MODEL_NAME = "sentence-transformers/paraphrase-MiniLM-L6-v2"
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# =========================
-# CONFIG
-# =========================
 st.set_page_config(page_title=APP_TITLE, layout="wide")
 
 st.markdown("""
@@ -55,9 +49,6 @@ div.stButton > button {
 </style>
 """, unsafe_allow_html=True)
 
-# =========================
-# HEADER
-# =========================
 if os.path.exists("bps.png"):
     st.image("bps.png", width=200)
 
@@ -71,9 +62,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# =========================
-# SESSION STATE INIT
-# =========================
 for key, default in {
     "params": {},
     "df_raw": pd.DataFrame(),
@@ -87,9 +75,6 @@ for key, default in {
     if key not in st.session_state:
         st.session_state[key] = default
 
-# =========================
-# MODEL LOADER
-# =========================
 @st.cache_resource
 def load_model_bundle(model_repo_id: str, encoder_filename: str):
     tokenizer = AutoTokenizer.from_pretrained(model_repo_id)
@@ -107,7 +92,6 @@ def load_model_bundle(model_repo_id: str, encoder_filename: str):
 
     return tokenizer, model, label_encoder
 
-
 @st.cache_resource
 def load_all_models():
     category_bundle = load_model_bundle(CATEGORY_MODEL_DIR, CATEGORY_ENCODER)
@@ -115,33 +99,18 @@ def load_all_models():
     growth_bundle = load_model_bundle(GROWTH_MODEL_DIR, GROWTH_ENCODER)
     return category_bundle, movement_bundle, growth_bundle
 
-
 @st.cache_resource
 def load_sbert_model():
     return SentenceTransformer(SBERT_MODEL_NAME)
 
-
 def models_ready() -> bool:
     try:
-        hf_hub_download(
-            repo_id=CATEGORY_MODEL_DIR,
-            filename=CATEGORY_ENCODER,
-            repo_type="model",
-        )
-        hf_hub_download(
-            repo_id=MOVEMENT_MODEL_DIR,
-            filename=MOVEMENT_ENCODER,
-            repo_type="model",
-        )
-        hf_hub_download(
-            repo_id=GROWTH_MODEL_DIR,
-            filename=GROWTH_ENCODER,
-            repo_type="model",
-        )
+        hf_hub_download(repo_id=CATEGORY_MODEL_DIR, filename=CATEGORY_ENCODER, repo_type="model")
+        hf_hub_download(repo_id=MOVEMENT_MODEL_DIR, filename=MOVEMENT_ENCODER, repo_type="model")
+        hf_hub_download(repo_id=GROWTH_MODEL_DIR, filename=GROWTH_ENCODER, repo_type="model")
         return True
     except Exception:
         return False
-
 
 def predict_single_text(text: str, tokenizer, model, encoder, max_length: int = 512):
     text = str(text).strip()
@@ -166,9 +135,6 @@ def predict_single_text(text: str, tokenizer, model, encoder, max_length: int = 
     label = encoder.inverse_transform([pred_idx])[0]
     return label, confidence
 
-# =========================
-# HELPERS
-# =========================
 SELECTION_KEYWORDS = [
     "naik", "tumbuh", "tingkat", "positif", "optimis", "kuat",
     "lonjak", "puncak", "baik", "pulih", "lebih", "deflasi", "stimulus",
@@ -182,7 +148,6 @@ SELECTION_KEYWORDS = [
     "peningkatan daya beli", "peningkatan lapangan pekerjaan", "proyeksi pertumbuhan stabil",
     "indikator ekonomi positif", "sektor berkembang", "sektor ekspansif", "kondisi ekonomi sehat",
     "kepercayaan ekonomi", "kinerja sektor", "investasi berkembang", "kinerja ekspor",
-
     "inflasi", "turun", "lambat", "jatuh", "lemah", "merosot",
     "kontraksi", "rebound", "puruk", "buruk", "susut", "krisis", "resesi",
     "negatif", "gagal", "jatuh bebas", "anggur", "defisit",
@@ -196,7 +161,6 @@ SELECTION_KEYWORDS = [
     "penurunan produksi", "depresi ekonomi", "kemerosotan pasar", "penyusutan pasar",
     "beban utang tinggi", "kelemahan investasi", "turunnya ekspor", "krisis ketenagakerjaan",
     "pengangguran meningkat", "defisit fiskal",
-
     "tahun", "perbandingan tahunan", "dari tahun ke tahun", "pertumbuhan tahunan",
     "perbandingan tahun sebelumnya", "pertumbuhan ekonomi tahun ini", "analisis tahunan",
     "yoy", "y o y", "y-o-y", "year-on-year", "year on year",
@@ -206,91 +170,11 @@ SELECTION_KEYWORDS = [
     "q to q", "q1", "q2", "q3", "q4",
     "pertumbuhan kumulatif", "c-to-c", "cumulative", "tahun berjalan",
     "semester pertama", "semester kedua", "setengah tahun", "kumulatif", "tahun penuh",
-    "ctoc", "c to c", "cumulative on cumulative",
-
-    "tani", "tanam", "pangan", "ikan", "laut", "nelayan", "sawit", "padi", "buah",
-    "jagung", "kedelai", "gandum", "ubi", "sayuran", "tanaman pangan", "biji", "pokok", "hortikultura",
-    "sayur", "cabai", "tomat", "bawang", "hias", "kelapa", "pepaya", "kopi", "teh", "kakao",
-    "karet", "gula", "kebun", "ternak", "sapi", "kambing", "ayam", "unggas", "domba",
-    "rph", "potong hewan", "sembelih", "jasa tani", "buru", "hasil tani", "produk tani",
-    "daging", "bibit", "hutan", "tebang", "kayu", "kayu bulat", "panglong", "kayu lapis", "hutan lindung",
-    "hutan tropis", "reboisasi", "madu hutan", "walet", "akasia", "budidaya", "tangkap",
-    "tambak", "pancing", "udang", "lobster", "tembakau", "buahbuahan",
-
-    "tambang", "eksplorasi", "mineral", "gali", "sda", "sumber daya alam", "minyak bumi", "sumur minyak",
-    "panas bumi", "ladang gas", "minyak", "rig", "bor", "energi panas", "kilang minyak", "batu", "batu bara",
-    "bara", "kerikil", "lignit", "bijih", "bijih besi", "besi", "logam", "tembaga", "nikel", "emas", "perak",
-    "freeport", "pertamina", "ekstraksi", "smelter", "hilirisasi", "kapur", "gamping", "marmer", "pasir",
-    "granit", "esdm", "baja", "aluminium",
-
-    "olah", "pabrik", "barang", "industri", "tekstil", "olah makanan", "produktivitas",
-    "tenaga kerja", "pasar tenaga kerja", "sektor", "minyak sawit", "kelapa sawit", "kopra", "rokok", "cerutu",
-    "olah tembakau", "industri tekstil", "pakai jadi", "kain", "garmen", "kulit", "alas kaki", "sepatu", "tas",
-    "bambu", "rotan", "anyaman", "kertas", "produk kertas", "cetak", "kimia", "farmasi", "obat", "karet",
-    "plastik", "sintetis", "komputer", "elektronik", "optik", "mesin", "alat", "sepeda motor", "furnitur",
-    "mebel", "perabot", "reparasi",
-
-    "listrik", "energi", "transmisi", "distribusi", "tenaga", "pln", "bangkit", "gas", "gas alam", "pipa gas",
-    "kilang gas", "stasiun gas", "kelola", "energi baru", "energi fosil",
-
-    "air", "pdam", "air bersih", "sedia air", "sumber air", "distribusi air", "olah air", "manajemen air",
-    "sistem air", "air minum", "akses air", "air tanah", "sampah", "kelola sampah", "kumpul sampah", "sampah organik",
-    "sampah plastik", "tempat sampah", "sampah rumah tangga", "buang sampah", "pilah sampah", "pusat sampah", "daur ulang",
-    "tpa", "limbah padat", "limbah cair", "limbah", "kelola limbah", "buang limbah", "buang",
-
-    "infrastruktur", "bangun", "gedung", "jalan", "tol", "konstruksi", "proyek", "rumah", "jembatan", "bendung",
-    "waduk", "jasa konstruksi", "kontraktor", "teknik sipil", "rancang", "ikn",
-
-    "pasar", "dagang", "grosir", "eceran", "umkm", "menengah", "mikro",
-    "harga", "global", "kawasan", "neraca dagang", "nilai tukar", "konsumsi rumah tangga",
-    "indeks harga", "belanja", "ritel",
-
-    "angkut", "simpan", "kirim", "transportasi", "udara", "darat", "pesawat", "kapal", "kereta api",
-    "bis", "bus", "bus kota", "angkot", "mrt", "lrt", "krl", "busway", "transjakarta", "tiket",
-    "bandara", "stasiun", "terminal", "labuh", "mobil", "truk", "asdp", "transit", "maskapai", "terbang",
-    "logistik", "distribusi", "gudang", "kurir", "port", "halte", "warehouse",
-    "gudang barang", "rel", "feri", "seberang", "tumpang", "okupansi", "pos", "agen", "jnt", "jne", "libur",
-    "ojek", "ojol", "opang", "ojek online",
-
-    "akomodasi", "makan", "minum", "hotel", "restoran", "inap", "katering", "rumah makan", "hostel", "homestay",
-    "kafe", "warung", "kedai", "dapur", "pesan antar", "siap saji", "delivery", "resor", "villa", "wisata", "pariwisata",
-
-    "informasi", "telepon", "telekomunikasi", "media", "komunikasi", "internet", "teknologi", "berita",
-    "siar", "media sosial", "platform", "digital", "ti", "it", "sistem informasi", "aplikasi", "perangkat lunak",
-    "software", "cloud", "data center", "komputasi", "seluler", "jaringan", "nirkabel",
-    "satelit", "radio", "televisi", "pulsa",
-
-    "asuransi", "bank", "pasar modal", "modal", "deposito", "bunga", "uang", "pinjam", "simpan",
-    "ekonomi", "produk domestik bruto", "pdb", "gdp", "produk nasional bruto",
-    "ekonomi nasional", "investasi", "suku bunga", "indeks ekonomi", "stabilitas",
-    "nilai tukar", "neraca dagang", "angka", "moneter", "fiskal",
-
-    "properti", "aset", "real estat", "huni", "apartemen", "rumah", "rumah susun", "kontrak",
-    "kantor", "developer",
-
-    "riset", "kembang", "konsultan", "bisnis", "jasa hukum", "profesional", "ilmu", "teknis",
-    "intelektual", "konsultasi", "layan hukum", "advokat", "notaris", "administrasi",
-    "korporat", "korposari",
-
-    "layan publik", "perintah pusat", "perintah daerah", "kantor", "apbd", "apbn", "anggaran", "administrasi",
-    "birokrasi", "militer", "tentara", "tni", "polisi", "polri", "aparat", "intelijen", "jamsos", "asuransi",
-    "bpjs", "pensiun", "jaminan pekerjaan",
-
-    "didik tinggi", "formal", "didik", "siswa", "murid", "guru", "sekolah", "universitas", "guru tinggi",
-    "kursus", "bimbing", "seminar", "workshop", "vokasi",
-
-    "rumah sakit", "medis", "sehat", "sosial", "perawat", "klinik", "puskesmas", "dokter",
-    "tenaga medis", "rsud", "bantu", "dana sosial", "rehabilitasi", "asuh",
-
-    "seni", "hibur", "rekreasi", "layanan", "lainnya", "seni rupa", "musik", "tari", "film", "konser", "lukis",
-    "teater", "event", "eo", "organizer", "art", "pembantu", "badan internasional", "organisasi internasional",
-    "organisasi global", "pbb"
+    "ctoc", "c to c", "cumulative on cumulative"
 ]
-
 
 def fmt_ddmmyyyy(d):
     return d.strftime("%d/%m/%Y")
-
 
 def reset_downstream_state():
     st.session_state.df_clean = pd.DataFrame()
@@ -299,10 +183,8 @@ def reset_downstream_state():
     st.session_state.segments = {}
     st.session_state.avg_confidence = {}
 
-
 def normalize_df(df: pd.DataFrame, source_name: str = "dataset.csv") -> pd.DataFrame:
     df = df.copy()
-
     default_cols = {
         "title": "",
         "category": "",
@@ -335,14 +217,12 @@ def normalize_df(df: pd.DataFrame, source_name: str = "dataset.csv") -> pd.DataF
     df["title"] = df["title"].astype(str)
     return df
 
-
 def robust_read_csv(path_or_buffer):
     attempts = [
         {"sep": ",", "engine": "python", "quoting": csv.QUOTE_MINIMAL},
         {"sep": ",", "engine": "python", "on_bad_lines": "skip"},
         {"sep": None, "engine": "python", "on_bad_lines": "skip"},
     ]
-
     last_error = None
     for kwargs in attempts:
         try:
@@ -350,20 +230,16 @@ def robust_read_csv(path_or_buffer):
         except Exception as e:
             last_error = e
             continue
-
     raise ValueError(f"Gagal membaca CSV. Error terakhir: {last_error}")
-
 
 def parse_list_string(value):
     if pd.isna(value):
         return []
     if isinstance(value, list):
         return [str(x).strip() for x in value if str(x).strip()]
-
     text = str(value).strip()
     if not text or text.lower() == "nan":
         return []
-
     try:
         parsed = ast.literal_eval(text)
         if isinstance(parsed, list):
@@ -371,7 +247,6 @@ def parse_list_string(value):
         return [str(parsed).strip()]
     except Exception:
         return [text]
-
 
 def choose_text_for_processing(row):
     selected_list = parse_list_string(row.get("selected_sentences", ""))
@@ -393,7 +268,6 @@ def choose_text_for_processing(row):
     title = str(row.get("title", "")).strip()
     return title, split_sentences(title), "title"
 
-
 def normalize_pdb_label(value):
     s = str(value).strip().lower()
     if s in {"1", "naik"}:
@@ -402,10 +276,8 @@ def normalize_pdb_label(value):
         return "Turun"
     return str(value)
 
-
 def add_sector_emoji(value):
     s = str(value).strip().lower()
-
     mapping = {
         "pertanian": "🌾 Pertanian",
         "pertambangan": "⛏️ Pertambangan",
@@ -425,37 +297,25 @@ def add_sector_emoji(value):
         "kesehatan": "🚑 Kesehatan",
         "jasa_lainnya": "🧩 Jasa Lainnya",
     }
-
     return mapping.get(s, str(value))
-
 
 def select_sentences_based_on_keywords(sentences, keywords):
     selected = []
     normalized_keywords = [str(k).strip().lower() for k in keywords if str(k).strip()]
-
     for sentence in sentences:
         s_low = str(sentence).lower()
         if any(keyword in s_low for keyword in normalized_keywords):
             selected.append(sentence)
-
     return selected
-
 
 def extract_neural_sentences(sentences, keywords, sbert_model, top_k: int = 5):
     selected_sentences = select_sentences_based_on_keywords(sentences, keywords)
-
     if not selected_sentences:
         return [sentences[0]] if sentences else []
-
     if len(selected_sentences) > 100:
         selected_sentences = selected_sentences[:100]
 
-    sentence_embeddings = sbert_model.encode(
-        selected_sentences,
-        batch_size=32,
-        show_progress_bar=False
-    )
-
+    sentence_embeddings = sbert_model.encode(selected_sentences, batch_size=32, show_progress_bar=False)
     all_text = " ".join(selected_sentences)
     words = re.findall(r"\b\w+\b", all_text.lower())
 
@@ -464,25 +324,15 @@ def extract_neural_sentences(sentences, keywords, sbert_model, top_k: int = 5):
 
     unique_words = list(dict.fromkeys(words))
     word_subset = unique_words[:500]
-
-    word_embeddings = sbert_model.encode(
-        word_subset,
-        batch_size=32,
-        show_progress_bar=False
-    )
+    word_embeddings = sbert_model.encode(word_subset, batch_size=32, show_progress_bar=False)
 
     cosine_similarities = cosine_similarity(sentence_embeddings, word_embeddings)
     sentence_scores = cosine_similarities.mean(axis=1)
-
     idx_sorted = sentence_scores.argsort()[::-1]
     top_indices = idx_sorted[:top_k]
-
     top_sentences = [selected_sentences[i] for i in top_indices]
     return top_sentences
 
-# =========================
-# SIDEBAR
-# =========================
 with st.sidebar:
     st.header("Mode Sumber Data")
     data_source_mode = st.radio(
@@ -490,18 +340,13 @@ with st.sidebar:
         options=["Scraping Berita Real-Time", "Load CSV Berita Tersimpan"],
         index=1,
     )
-
     st.markdown("---")
     if models_ready():
         st.success("3 model terdeteksi dari Hugging Face.")
     else:
         st.warning("Model atau label encoder dari Hugging Face belum bisa diakses.")
-
     st.caption("Hasil tidak disimpan permanen di server. Gunakan tombol download untuk menyimpan ke komputer Anda.")
 
-# =========================
-# INPUT AREA
-# =========================
 if data_source_mode == "Scraping Berita Real-Time":
     st.subheader("Scraping Berita")
 
@@ -525,18 +370,8 @@ if data_source_mode == "Scraping Berita Real-Time":
     else:
         keywords = "ekonomi"
 
-    cat_label = st.selectbox(
-        "Kategori Berita",
-        options=["Semua Kategori"] + list(CATEGORY_SITEID.keys())
-    )
-
-    include_advertorial = st.radio(
-        "Sertakan artikel advertorial?",
-        options=["Ya", "Tidak"],
-        horizontal=True,
-        index=1,
-    )
-
+    cat_label = st.selectbox("Kategori Berita", options=["Semua Kategori"] + list(CATEGORY_SITEID.keys()))
+    include_advertorial = st.radio("Sertakan artikel advertorial?", options=["Ya", "Tidak"], horizontal=True, index=1)
     max_articles = st.slider("Jumlah artikel yang ingin diekstrak", 5, 200, 30, 5)
 
     with st.expander("Pengaturan request (advanced)"):
@@ -544,7 +379,6 @@ if data_source_mode == "Scraping Berita Real-Time":
         timeout = st.slider("Timeout (detik)", 10, 60, 30, 5)
 
     exclude_advertorial = include_advertorial == "Tidak"
-
 else:
     st.subheader("Load Dataset CSV")
     csv_mode = st.radio(
@@ -558,9 +392,6 @@ else:
 
 st.markdown("<hr>", unsafe_allow_html=True)
 
-# =========================
-# BUTTONS
-# =========================
 if data_source_mode == "Scraping Berita Real-Time":
     b1, b2, b3, b4, b5 = st.columns(5)
     with b1:
@@ -587,9 +418,6 @@ else:
     save_clicked = False
     scrape_clicked = False
 
-# =========================
-# ACTIONS
-# =========================
 if save_clicked and data_source_mode == "Scraping Berita Real-Time":
     st.session_state.params = {
         "topic_mode": topic_mode,
@@ -656,6 +484,7 @@ if scrape_clicked and data_source_mode == "Scraping Berita Real-Time":
         if cat_label == "Semua Kategori":
             dfs = []
             total_cat = len(CATEGORY_SITEID)
+
             for i, (name, siteid) in enumerate(CATEGORY_SITEID.items(), start=1):
                 status.write(f"Scraping kategori {i}/{total_cat}: {name}")
                 try:
@@ -671,6 +500,9 @@ if scrape_clicked and data_source_mode == "Scraping Berita Real-Time":
                         include_content=True,
                         exclude_advertorial=exclude_advertorial,
                     )
+                    err = getattr(df, "attrs", {}).get("error_message", "")
+                    if err:
+                        scrape_errors.append(f"{name}: {err}")
                     if df is not None and not df.empty:
                         df["source"] = name
                         dfs.append(df)
@@ -696,6 +528,9 @@ if scrape_clicked and data_source_mode == "Scraping Berita Real-Time":
                     include_content=True,
                     exclude_advertorial=exclude_advertorial,
                 )
+                err = getattr(df_raw, "attrs", {}).get("error_message", "")
+                if err:
+                    scrape_errors.append(f"{cat_label}: {err}")
                 if df_raw is not None and not df_raw.empty:
                     df_raw["source"] = cat_label
                 else:
@@ -719,7 +554,9 @@ if scrape_clicked and data_source_mode == "Scraping Berita Real-Time":
             st.warning("Sebagian scraping gagal:\n\n" + "\n".join([str(x) for x in scrape_errors[:10]]))
 
         if df_raw.empty:
-            if topic_mode == "Topik berita campuran":
+            if scrape_errors:
+                st.error("Scraping tidak menghasilkan artikel. Kemungkinan request ke Detik gagal atau halaman tidak berhasil diparse.")
+            elif topic_mode == "Topik berita campuran":
                 st.warning("Tidak ada artikel ditemukan untuk mode topik berita campuran.")
             else:
                 st.warning(f'Tidak ada artikel yang ditemukan mengenai "{keywords}".')
@@ -735,18 +572,15 @@ if segment_clicked:
         st.stop()
 
     df = st.session_state.df_raw.copy()
-
     text_for_processing = []
     text_clean = []
     segment_source = []
     seg_map = {}
-
     cleaned_contents = []
     segmented_contents = []
 
     for idx, row in df.iterrows():
         article_id = row.get("article_url", f"row_{idx}")
-
         raw_content = str(row.get("content", "")).strip()
         cleaned_content = clean_news_content(raw_content)
         cleaned_basic = clean_text_basic(cleaned_content)
@@ -805,7 +639,6 @@ if select_clicked:
         st.stop()
 
     sbert_model = load_sbert_model()
-
     selected_sentences_col = []
     selected_text_col = []
 
@@ -829,7 +662,6 @@ if select_clicked:
 
         selected_sentences_col.append(selected_sentences)
         selected_text_col.append(" ".join(selected_sentences))
-
         progress.progress(int((i + 1) / total * 100))
 
     source_df["selected_sentences"] = selected_sentences_col
@@ -858,7 +690,6 @@ if model_clicked:
         (growth_tokenizer, growth_model, growth_encoder) = load_all_models()
 
         df = st.session_state.df_clean.copy()
-
         progress = st.progress(0)
         total = len(df)
 
@@ -901,9 +732,6 @@ if model_clicked:
     except Exception as e:
         st.error(f"Gagal menjalankan model: {e}")
 
-# =========================
-# DISPLAY
-# =========================
 st.subheader("Hasil Berita")
 
 df_show = st.session_state.df_pred if not st.session_state.df_pred.empty else (
@@ -977,29 +805,6 @@ else:
     gb = GridOptionsBuilder.from_dataframe(view_df)
     gb.configure_default_column(editable=False, groupable=False, resizable=True, sortable=True, filter=True)
 
-    if "title" in view_df.columns:
-        gb.configure_column("title", header_name="Judul Berita", width=420)
-    if "publish_date" in view_df.columns:
-        gb.configure_column("publish_date", header_name="Tanggal Terbit", width=160)
-    if "category" in view_df.columns:
-        gb.configure_column("category", header_name="Kategori", width=120)
-    if "source" in view_df.columns:
-        gb.configure_column("source", header_name="Sumber", width=120)
-    if "segment_source" in view_df.columns:
-        gb.configure_column("segment_source", header_name="Sumber Kalimat", width=150)
-    if "sector_label_emoji" in view_df.columns:
-        gb.configure_column("sector_label_emoji", header_name="Sektor", width=180)
-    if "sector_confidence" in view_df.columns:
-        gb.configure_column("sector_confidence", header_name="Conf. Sektor", width=120)
-    if "pdb_label_color" in view_df.columns:
-        gb.configure_column("pdb_label_color", header_name="Pergerakan PDB", width=140)
-    if "pdb_confidence" in view_df.columns:
-        gb.configure_column("pdb_confidence", header_name="Conf. PDB", width=110)
-    if "growth_label" in view_df.columns:
-        gb.configure_column("growth_label", header_name="Growth", width=120)
-    if "growth_confidence" in view_df.columns:
-        gb.configure_column("growth_confidence", header_name="Conf. Growth", width=130)
-
     AgGrid(view_df, gridOptions=gb.build(), height=420)
 
     confidence_cols = ["sector_confidence", "pdb_confidence", "growth_confidence"]
@@ -1012,22 +817,12 @@ else:
 
         st.markdown("### Rata-rata Confidence Prediksi")
         c1, c2, c3 = st.columns(3)
-
         with c1:
-            st.metric(
-                "Category",
-                f"{avg_sector_filtered:.2%}" if avg_sector_filtered is not None and pd.notna(avg_sector_filtered) else "-"
-            )
+            st.metric("Category", f"{avg_sector_filtered:.2%}" if avg_sector_filtered is not None and pd.notna(avg_sector_filtered) else "-")
         with c2:
-            st.metric(
-                "Movement",
-                f"{avg_pdb_filtered:.2%}" if avg_pdb_filtered is not None and pd.notna(avg_pdb_filtered) else "-"
-            )
+            st.metric("Movement", f"{avg_pdb_filtered:.2%}" if avg_pdb_filtered is not None and pd.notna(avg_pdb_filtered) else "-")
         with c3:
-            st.metric(
-                "Growth",
-                f"{avg_growth_filtered:.2%}" if avg_growth_filtered is not None and pd.notna(avg_growth_filtered) else "-"
-            )
+            st.metric("Growth", f"{avg_growth_filtered:.2%}" if avg_growth_filtered is not None and pd.notna(avg_growth_filtered) else "-")
 
     with st.expander("Preview teks yang dipakai untuk processing"):
         preview_cols = [
