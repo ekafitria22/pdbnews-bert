@@ -3,6 +3,7 @@ import ast
 import pickle
 from datetime import datetime
 
+from io import BytesIO
 import pandas as pd
 import streamlit as st
 import torch
@@ -658,13 +659,32 @@ else:
         preview_cols = [c for c in ["title", "text_for_processing", "neural_sentences", "content"] if c in filtered.columns]
         if preview_cols:
             st.dataframe(filtered[preview_cols].head(5), use_container_width=True)
+download_col1, download_col2 = st.columns(2)
 
-    csv_bytes = filtered.to_csv(index=False).encode("utf-8")
+# CSV
+csv_bytes = filtered.to_csv(index=False).encode("utf-8")
+with download_col1:
     st.download_button(
         "Download hasil saat ini (CSV)",
         data=csv_bytes,
         file_name="hasil_berita_ekonomi.csv",
         mime="text/csv",
+    )
+
+# Excel
+excel_buffer = BytesIO()
+with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+    filtered.to_excel(writer, index=False, sheet_name="hasil_berita")
+
+excel_buffer.seek(0)
+
+with download_col2:
+    st.download_button(
+        "Download hasil saat ini (Excel)",
+        data=excel_buffer,
+        file_name="hasil_berita_ekonomi.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
     )
 
 # =========================
