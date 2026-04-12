@@ -9,6 +9,15 @@ DEFAULT_HEADERS = {
 }
 
 
+def empty_result_df(include_content=True, error_message=""):
+    columns = ["title", "category", "publish_date", "article_url"]
+    if include_content:
+        columns.append("content")
+    df = pd.DataFrame(columns=columns)
+    df.attrs["error_message"] = error_message
+    return df
+
+
 def get_with_retry(url, headers=None, timeout=30, max_retries=3, sleep_s=1.2):
     last_error = None
     for attempt in range(max_retries):
@@ -235,22 +244,23 @@ def scrape_detik_search(
             timeout=timeout,
             sleep_s=sleep_s,
         )
-    except Exception:
-        columns = ["title", "category", "publish_date", "article_url"]
-        if include_content:
-            columns.append("content")
-        return pd.DataFrame(columns=columns)
+    except Exception as e:
+        return empty_result_df(
+            include_content=include_content,
+            error_message=f"Gagal mengambil halaman pencarian Detik: {e}"
+        )
 
     article_lists = []
     seen_urls = set()
     seen_titles = set()
     seen_contents = set()
+    page_errors = []
 
     if results_num == 0:
-        columns = ["title", "category", "publish_date", "article_url"]
-        if include_content:
-            columns.append("content")
-        return pd.DataFrame(article_lists, columns=columns)
+        return empty_result_df(
+            include_content=include_content,
+            error_message=""
+        )
 
     pages = last_page
 
@@ -265,7 +275,8 @@ def scrape_detik_search(
                 timeout=timeout,
                 sleep_s=sleep_s,
             )
-        except Exception:
+        except Exception as e:
+            page_errors.append(f"Page {i}: {e}")
             continue
 
         articles = page.find_all("article", class_="list-content__item")
@@ -333,10 +344,21 @@ def scrape_detik_search(
                 if len(article_lists) >= max_articles:
                     break
 
-            except Exception:
+            except Exception as e:
+                page_errors.append(f"Parse artikel page {i}: {e}")
                 continue
 
         if len(article_lists) >= max_articles:
             break
 
-    return pd.DataFrame(article_lists)
+    df = pd.DataFrame(article_lists)
+
+    if df.empty and page_errors:
+        df = empty_result_df(
+            include_content=include_content,
+            error_message="; ".join(page_errors[:5])
+        )
+    else:
+        df.attrs["error_message"] = "; ".join(page_errors[:5]) if page_errors else ""
+
+    return df
