@@ -287,7 +287,7 @@ with st.sidebar:
 # =========================
 # INPUT AREA
 # =========================
-if data_source_mode == "Scraping Live":
+if data_source_mode == "Scraping Berita Real-Time":
     st.subheader("Parameter Scraping")
 
     c1, c2 = st.columns(2)
@@ -314,7 +314,7 @@ else:
     st.subheader("Load Dataset CSV")
     csv_mode = st.radio(
         "Sumber CSV:",
-        options=["Gunakan file lokal dataset.csv", "Gunakan file lokal dataset_master.csv", "Upload file CSV"],
+        options=["Gunakan file lokal dataset.csv", "Upload file CSV"],
         horizontal=True
     )
     uploaded_csv = None
@@ -326,7 +326,7 @@ st.markdown("<hr>", unsafe_allow_html=True)
 # =========================
 # BUTTONS
 # =========================
-if data_source_mode == "Scraping Live":
+if data_source_mode == "Scraping Berita Real-Time":
     b1, b2, b3, b4 = st.columns(4)
     with b1:
         save_clicked = st.button("Simpan Pilihan")
@@ -351,7 +351,7 @@ else:
 # =========================
 # ACTIONS
 # =========================
-if save_clicked and data_source_mode == "Scraping Live":
+if save_clicked and data_source_mode == "Scraping Berita Real-Time":
     st.session_state.params = {
         "start_date": start_date,
         "end_date": end_date,
@@ -364,19 +364,12 @@ if save_clicked and data_source_mode == "Scraping Live":
     }
     st.success("Pilihan tersimpan.")
 
-if load_csv_clicked and data_source_mode == "Load CSV Tersimpan":
+if load_csv_clicked and data_source_mode == "Load CSV Berita Tersimpan":
     try:
         if csv_mode == "Gunakan file lokal dataset.csv":
             path = "dataset.csv"
             if not os.path.exists(path):
                 st.error("File dataset.csv tidak ditemukan.")
-                st.stop()
-            df_raw = robust_read_csv(path)
-            loaded_from = path
-        elif csv_mode == "Gunakan file lokal dataset_master.csv":
-            path = "dataset_master.csv"
-            if not os.path.exists(path):
-                st.error("File dataset_master.csv tidak ditemukan.")
                 st.stop()
             df_raw = robust_read_csv(path)
             loaded_from = path
@@ -396,7 +389,7 @@ if load_csv_clicked and data_source_mode == "Load CSV Tersimpan":
     except Exception as e:
         st.error(f"Gagal load CSV: {e}")
 
-if scrape_clicked and data_source_mode == "Scraping Live":
+if scrape_clicked and data_source_mode == "Scraping Berita Real-Time":
     if not keywords.strip():
         st.error("Keyword tidak boleh kosong.")
         st.stop()
