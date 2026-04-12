@@ -523,8 +523,8 @@ if data_source_mode == "Scraping Berita Real-Time":
     max_articles = st.slider("Maksimal artikel", 5, 200, 30, 5)
 
     with st.expander("Pengaturan request (advanced)"):
-        sleep_s = st.slider("Delay per request (detik)", 0.3, 3.0, 1.2, 0.1)
-        timeout = st.slider("Timeout (detik)", 5, 60, 30, 5)
+        sleep_s = st.slider("Delay per request (detik)", 0.5, 3.0, 1.5, 0.1)
+        timeout = st.slider("Timeout (detik)", 10, 60, 30, 5)
 
 else:
     st.subheader("Load Dataset CSV")
