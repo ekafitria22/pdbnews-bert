@@ -15,7 +15,12 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 
 from utils.constants import APP_TITLE, CATEGORY_SITEID, NEWS_TYPE_OPTIONS, KEYWORD_HINT
 from utils.scraper_detik import scrape_detik_search
-from utils.text_utils import clean_text, split_sentences
+from utils.text_utils import (
+    clean_text,
+    clean_news_content,
+    clean_text_basic,
+    split_sentences,
+)
 
 # =========================
 # MODEL PATHS
@@ -292,7 +297,9 @@ def normalize_df(df: pd.DataFrame, source_name: str = "dataset.csv") -> pd.DataF
         "publish_date": "",
         "article_url": "",
         "content": "",
+        "cleaned_content": "",
         "segment": "",
+        "segmented_content": "",
         "neural_sentences": "",
         "selected_sentences": "",
         "selected_text": "",
@@ -362,6 +369,10 @@ def choose_text_for_processing(row):
     neural_list = parse_list_string(row.get("neural_sentences", ""))
     if neural_list:
         return " ".join(neural_list), neural_list, "neural_sentences"
+
+    cleaned_content = str(row.get("cleaned_content", "")).strip()
+    if cleaned_content:
+        return cleaned_content, split_sentences(cleaned_content), "cleaned_content"
 
     content = str(row.get("content", "")).strip()
     if content:
@@ -496,6 +507,7 @@ if data_source_mode == "Scraping Berita Real-Time":
         st.write(", ".join(KEYWORD_HINT))
 
     cat_label = st.selectbox("Kategori Detik", options=["Semua"] + list(CATEGORY_SITEID.keys()))
+    exclude_advertorial = st.checkbox("Kecualikan artikel advertorial", value=True)
     max_articles = st.slider("Maksimal artikel", 5, 200, 30, 5)
 
     with st.expander("Pengaturan request (advanced)"):
@@ -557,6 +569,7 @@ if save_clicked and data_source_mode == "Scraping Berita Real-Time":
         "max_articles": int(max_articles),
         "sleep_s": float(sleep_s),
         "timeout": int(timeout),
+        "exclude_advertorial": bool(exclude_advertorial),
     }
     st.success("Pilihan tersimpan.")
 
@@ -622,6 +635,8 @@ if scrape_clicked and data_source_mode == "Scraping Berita Real-Time":
                         timeout=timeout,
                         sleep_s=sleep_s,
                         progress_cb=None,
+                        include_content=True,
+                        exclude_advertorial=exclude_advertorial,
                     )
                     if df is not None and not df.empty:
                         df["source"] = name
@@ -642,6 +657,8 @@ if scrape_clicked and data_source_mode == "Scraping Berita Real-Time":
                     timeout=timeout,
                     sleep_s=sleep_s,
                     progress_cb=cb,
+                    include_content=True,
+                    exclude_advertorial=exclude_advertorial,
                 )
                 if df_raw is not None and not df_raw.empty:
                     df_raw["source"] = cat_label
@@ -677,20 +694,40 @@ if segment_clicked:
         st.stop()
 
     df = st.session_state.df_raw.copy()
+
     text_for_processing = []
     text_clean = []
     segment_source = []
     seg_map = {}
 
+    cleaned_contents = []
+    segmented_contents = []
+
     for idx, row in df.iterrows():
         article_id = row.get("article_url", f"row_{idx}")
+
+        raw_content = str(row.get("content", "")).strip()
+        cleaned_content = clean_news_content(raw_content)
+        cleaned_basic = clean_text_basic(cleaned_content)
+        segmented = split_sentences(cleaned_basic)
+
+        cleaned_contents.append(cleaned_basic)
+        segmented_contents.append(segmented)
+
         chosen_text, chosen_segments, source_name = choose_text_for_processing(row)
+
+        if not chosen_text.strip() and cleaned_basic.strip():
+            chosen_text = cleaned_basic
+            chosen_segments = segmented
+            source_name = "cleaned_content"
 
         text_for_processing.append(chosen_text)
         text_clean.append(clean_text(chosen_text))
         segment_source.append(source_name)
         seg_map[article_id] = chosen_segments
 
+    df["cleaned_content"] = cleaned_contents
+    df["segmented_content"] = segmented_contents
     df["text_for_processing"] = text_for_processing
     df["text_clean"] = text_clean
     df["segment_source"] = segment_source
@@ -703,6 +740,8 @@ if segment_clicked:
         msg += "selected_sentences."
     elif (df["segment_source"] == "neural_sentences").any():
         msg += "neural_sentences."
+    elif (df["segment_source"] == "cleaned_content").any():
+        msg += "cleaned_content."
     elif (df["segment_source"] == "content").any():
         msg += "content."
     else:
@@ -733,7 +772,11 @@ if select_clicked:
     total = len(source_df)
 
     for i, row in source_df.iterrows():
-        content_text = str(row.get("content", "")).strip()
+        content_text = str(row.get("cleaned_content", "")).strip()
+        if not content_text:
+            raw_content = str(row.get("content", "")).strip()
+            content_text = clean_text_basic(clean_news_content(raw_content))
+
         sentences = split_sentences(content_text)
 
         selected_sentences = extract_neural_sentences(
@@ -949,10 +992,12 @@ else:
         preview_cols = [
             c for c in [
                 "title",
+                "content",
+                "cleaned_content",
+                "segmented_content",
                 "selected_sentences",
                 "selected_text",
                 "text_for_processing",
-                "content"
             ] if c in filtered.columns
         ]
         if preview_cols:
