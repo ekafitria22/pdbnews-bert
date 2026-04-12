@@ -70,6 +70,7 @@ for key, default in {
     "df_pred": pd.DataFrame(),
     "segments": {},
     "loaded_from": "",
+    "avg_confidence": {},
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
@@ -145,6 +146,7 @@ def reset_downstream_state():
     st.session_state.df_clean = pd.DataFrame()
     st.session_state.df_pred = pd.DataFrame()
     st.session_state.segments = {}
+    st.session_state.avg_confidence = {}
 
 
 def normalize_df(df: pd.DataFrame, source_name: str = "dataset.csv") -> pd.DataFrame:
@@ -529,6 +531,12 @@ if model_clicked:
         df["growth_confidence"] = growth_confs
 
         st.session_state.df_pred = df
+        st.session_state.avg_confidence = {
+            "sector": float(pd.Series(sector_confs).mean()) if sector_confs else 0.0,
+            "pdb": float(pd.Series(movement_confs).mean()) if movement_confs else 0.0,
+            "growth": float(pd.Series(growth_confs).mean()) if growth_confs else 0.0,
+        }
+
         st.success("Klasifikasi model selesai.")
     except Exception as e:
         st.error(f"Gagal menjalankan model: {e}")
@@ -613,6 +621,33 @@ else:
         gb.configure_column("growth_confidence", header_name="Conf. Growth", width=130)
 
     AgGrid(view_df, gridOptions=gb.build(), height=420)
+
+    confidence_cols = ["sector_confidence", "pdb_confidence", "growth_confidence"]
+    has_confidence = any(col in filtered.columns for col in confidence_cols)
+
+    if has_confidence and not filtered.empty:
+        avg_sector_filtered = filtered["sector_confidence"].mean() if "sector_confidence" in filtered.columns else None
+        avg_pdb_filtered = filtered["pdb_confidence"].mean() if "pdb_confidence" in filtered.columns else None
+        avg_growth_filtered = filtered["growth_confidence"].mean() if "growth_confidence" in filtered.columns else None
+
+        st.markdown("### Rata-rata Confidence Prediksi")
+        c1, c2, c3 = st.columns(3)
+
+        with c1:
+            st.metric(
+                "Category",
+                f"{avg_sector_filtered:.2%}" if avg_sector_filtered is not None and pd.notna(avg_sector_filtered) else "-"
+            )
+        with c2:
+            st.metric(
+                "Movement",
+                f"{avg_pdb_filtered:.2%}" if avg_pdb_filtered is not None and pd.notna(avg_pdb_filtered) else "-"
+            )
+        with c3:
+            st.metric(
+                "Growth",
+                f"{avg_growth_filtered:.2%}" if avg_growth_filtered is not None and pd.notna(avg_growth_filtered) else "-"
+            )
 
     with st.expander("Preview teks yang dipakai untuk processing"):
         preview_cols = [c for c in ["title", "text_for_processing", "neural_sentences", "content"] if c in filtered.columns]
