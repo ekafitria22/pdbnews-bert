@@ -1,6 +1,4 @@
-# utils/constants.py
-
-APP_TITLE = "Dashboard Klasifikasi Berita Ekonomi Pergerakan PDB Indonesia"
+APP_TITLE = "Aplikasi Klasifikasi Berita PDB"
 
 CATEGORY_SITEID = {
     "detikNews": 3,
@@ -24,19 +22,12 @@ CATEGORY_SITEID = {
     "detikBali": 123,
 }
 
-NEWS_TYPE_OPTIONS = [
-    "Berita Ekonomi",
-    "Berita Politik",
-    "Berita Teknologi",
-    "Berita Olahraga",
-    "Berita Hiburan",
-    "Semua",
-]
-
-# default keyword hint (kamu bisa ubah/luaskan)
 KEYWORD_HINT = [
-    "PDB", "GDP", "pertumbuhan ekonomi", "inflasi", "investasi",
-    "kebijakan moneter", "ekspor", "impor", "konsumsi", "produksi",
-    "kuartal", "YoY", "QoQ", "kumulatif",
+    "pdb",
+    "pertumbuhan ekonomi",
+    "inflasi",
+    "investasi",
+    "ekspor",
+    "konsumsi rumah tangga",
+    "produk domestik bruto",
 ]
-
