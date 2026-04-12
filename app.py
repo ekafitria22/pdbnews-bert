@@ -272,7 +272,7 @@ with st.sidebar:
     st.header("Mode Sumber Data")
     data_source_mode = st.radio(
         "Pilih mode:",
-        options=["Scraping Live", "Load CSV Tersimpan"],
+        options=["Scraping Berita Real-Time", "Load CSV Berita Tersimpan"],
         index=1,
     )
 
