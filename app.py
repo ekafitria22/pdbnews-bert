@@ -12,7 +12,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from huggingface_hub import hf_hub_download
-from st_aggrid import AgGrid, GridOptionsBuilder
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
 from utils.constants import APP_TITLE, CATEGORY_SITEID, KEYWORD_HINT
 from utils.scraper_detik import scrape_detik_search
@@ -71,10 +71,10 @@ for key, default in {
     "segments": {},
     "loaded_from": "",
     "avg_confidence": {},
-    "clean_result_df": pd.DataFrame(),
 }.items():
     if key not in st.session_state:
         st.session_state[key] = default
+
 
 @st.cache_resource
 def load_model_bundle(model_repo_id: str, encoder_filename: str):
@@ -93,6 +93,7 @@ def load_model_bundle(model_repo_id: str, encoder_filename: str):
 
     return tokenizer, model, label_encoder
 
+
 @st.cache_resource
 def load_all_models():
     category_bundle = load_model_bundle(CATEGORY_MODEL_DIR, CATEGORY_ENCODER)
@@ -100,9 +101,11 @@ def load_all_models():
     growth_bundle = load_model_bundle(GROWTH_MODEL_DIR, GROWTH_ENCODER)
     return category_bundle, movement_bundle, growth_bundle
 
+
 @st.cache_resource
 def load_sbert_model():
     return SentenceTransformer(SBERT_MODEL_NAME)
+
 
 def models_ready() -> bool:
     try:
@@ -112,6 +115,7 @@ def models_ready() -> bool:
         return True
     except Exception:
         return False
+
 
 def predict_single_text(text: str, tokenizer, model, encoder, max_length: int = 512):
     text = str(text).strip()
@@ -135,6 +139,7 @@ def predict_single_text(text: str, tokenizer, model, encoder, max_length: int = 
 
     label = encoder.inverse_transform([pred_idx])[0]
     return label, confidence
+
 
 SELECTION_KEYWORDS = [
     "naik", "tumbuh", "tingkat", "positif", "optimis", "kuat",
@@ -174,8 +179,10 @@ SELECTION_KEYWORDS = [
     "ctoc", "c to c", "cumulative on cumulative"
 ]
 
+
 def fmt_ddmmyyyy(d):
     return d.strftime("%d/%m/%Y")
+
 
 def reset_downstream_state():
     st.session_state.df_clean = pd.DataFrame()
@@ -183,6 +190,7 @@ def reset_downstream_state():
     st.session_state.df_pred = pd.DataFrame()
     st.session_state.segments = {}
     st.session_state.avg_confidence = {}
+
 
 def normalize_df(df: pd.DataFrame, source_name: str = "dataset.csv") -> pd.DataFrame:
     df = df.copy()
@@ -223,6 +231,7 @@ def normalize_df(df: pd.DataFrame, source_name: str = "dataset.csv") -> pd.DataF
     df["row_id"] = df["row_id"].astype(str)
     return df
 
+
 def robust_read_csv(path_or_buffer):
     attempts = [
         {"sep": ",", "engine": "python", "quoting": csv.QUOTE_MINIMAL},
@@ -237,6 +246,7 @@ def robust_read_csv(path_or_buffer):
             last_error = e
             continue
     raise ValueError(f"Gagal membaca CSV. Error terakhir: {last_error}")
+
 
 def parse_list_string(value):
     if pd.isna(value):
@@ -254,6 +264,7 @@ def parse_list_string(value):
     except Exception:
         return [text]
 
+
 def choose_text_for_processing(row):
     selected_list = parse_list_string(row.get("selected_sentences", ""))
     if selected_list:
@@ -262,6 +273,10 @@ def choose_text_for_processing(row):
     neural_list = parse_list_string(row.get("neural_sentences", ""))
     if neural_list:
         return " ".join(neural_list), neural_list, "neural_sentences"
+
+    segmented_content = row.get("segmented_content", [])
+    if isinstance(segmented_content, list) and segmented_content:
+        return " ".join(segmented_content), segmented_content, "segmented_content"
 
     cleaned_content = str(row.get("cleaned_content", "")).strip()
     if cleaned_content:
@@ -274,6 +289,7 @@ def choose_text_for_processing(row):
     title = str(row.get("title", "")).strip()
     return title, split_sentences(title), "title"
 
+
 def normalize_pdb_label(value):
     s = str(value).strip().lower()
     if s in {"1", "naik"}:
@@ -281,6 +297,7 @@ def normalize_pdb_label(value):
     if s in {"0", "-1", "turun"}:
         return "Turun"
     return str(value)
+
 
 def add_sector_emoji(value):
     s = str(value).strip().lower()
@@ -305,6 +322,7 @@ def add_sector_emoji(value):
     }
     return mapping.get(s, str(value))
 
+
 def select_sentences_based_on_keywords(sentences, keywords):
     selected = []
     normalized_keywords = [str(k).strip().lower() for k in keywords if str(k).strip()]
@@ -313,6 +331,7 @@ def select_sentences_based_on_keywords(sentences, keywords):
         if any(keyword in s_low for keyword in normalized_keywords):
             selected.append(sentence)
     return selected
+
 
 def extract_neural_sentences(sentences, keywords, sbert_model, top_k: int = 5):
     selected_sentences = select_sentences_based_on_keywords(sentences, keywords)
@@ -338,6 +357,7 @@ def extract_neural_sentences(sentences, keywords, sbert_model, top_k: int = 5):
     top_indices = idx_sorted[:top_k]
     top_sentences = [selected_sentences[i] for i in top_indices]
     return top_sentences
+
 
 with st.sidebar:
     st.header("Mode Sumber Data")
@@ -549,6 +569,8 @@ if scrape_clicked and data_source_mode == "Scraping Berita Real-Time":
             df_raw = normalize_df(df_raw, source_name="scraping_live")
             if "article_url" in df_raw.columns:
                 df_raw = df_raw.drop_duplicates(subset=["article_url"]).reset_index(drop=True)
+            if "row_id" not in df_raw.columns or df_raw["row_id"].isna().any():
+                df_raw["row_id"] = [f"scraping_live_{i}" for i in range(len(df_raw))]
 
         st.session_state.df_raw = df_raw
         st.session_state.loaded_from = "scraping_live"
@@ -586,7 +608,7 @@ if segment_clicked:
     segmented_contents = []
 
     for idx, row in df.iterrows():
-        article_id = row.get("row_id") or row.get("article_url", f"row_{idx}")
+        article_id = row.get("article_url", f"row_{idx}")
         raw_content = str(row.get("content", "")).strip()
 
         cleaned_content = clean_news_content(raw_content)
@@ -623,6 +645,8 @@ if segment_clicked:
         msg += "selected_sentences."
     elif (df["segment_source"] == "neural_sentences").any():
         msg += "neural_sentences."
+    elif (df["segment_source"] == "segmented_content").any():
+        msg += "segmented_content."
     elif (df["segment_source"] == "cleaned_content").any():
         msg += "cleaned_content."
     elif (df["segment_source"] == "content").any():
@@ -815,63 +839,78 @@ else:
     view_df = filtered[cols_to_show].reset_index(drop=True)
 
     gb = GridOptionsBuilder.from_dataframe(view_df)
-    gb.configure_default_column(editable=False, groupable=False, resizable=True, sortable=True, filter=True)
+    gb.configure_default_column(
+        editable=False,
+        groupable=False,
+        resizable=True,
+        sortable=True,
+        filter=True
+    )
+
     if "row_id" in view_df.columns:
         gb.configure_column("row_id", hide=True)
-    gb.configure_selection(selection_mode="multiple", use_checkbox=True)
+
+    gb.configure_selection(
+        selection_mode="multiple",
+        use_checkbox=True
+    )
 
     grid_response = AgGrid(
         view_df,
         gridOptions=gb.build(),
         height=420,
-        update_mode="SELECTION_CHANGED",
+        update_mode=GridUpdateMode.SELECTION_CHANGED,
         fit_columns_on_grid_load=True,
+        allow_unsafe_jscode=False
     )
 
     selected_rows = grid_response.get("selected_rows", [])
 
     action_col1, action_col2 = st.columns(2)
+
     with action_col1:
         delete_selected_clicked = st.button("Hapus semua baris terpilih")
+
     with action_col2:
         delete_and_save_clicked = st.button("Hapus terpilih + siapkan hasil bersih")
 
     if delete_selected_clicked or delete_and_save_clicked:
         if selected_rows is None or len(selected_rows) == 0:
-            st.warning("Pilih minimal satu baris terlebih dahulu.")
+            st.warning("Pilih minimal satu baris terlebih dahulu lewat checkbox di sisi kiri tabel.")
         else:
             selected_df = pd.DataFrame(selected_rows)
+
             if "row_id" not in selected_df.columns:
                 st.error("row_id tidak ditemukan pada baris terpilih.")
             else:
                 selected_ids = selected_df["row_id"].astype(str).tolist()
 
-                if not st.session_state.df_pred.empty:
-                    updated_df = st.session_state.df_pred[
-                        ~st.session_state.df_pred["row_id"].astype(str).isin(selected_ids)
-                    ].copy()
-                    st.session_state.df_pred = updated_df
-                elif not st.session_state.df_clean.empty:
-                    updated_df = st.session_state.df_clean[
-                        ~st.session_state.df_clean["row_id"].astype(str).isin(selected_ids)
-                    ].copy()
-                    st.session_state.df_clean = updated_df
-                else:
-                    updated_df = st.session_state.df_raw[
-                        ~st.session_state.df_raw["row_id"].astype(str).isin(selected_ids)
-                    ].copy()
-                    st.session_state.df_raw = updated_df
+                target_key = "df_pred" if not st.session_state.df_pred.empty else (
+                    "df_clean" if not st.session_state.df_clean.empty else "df_raw"
+                )
 
-                st.session_state["clean_result_df"] = updated_df.copy()
+                active_df = st.session_state[target_key].copy()
+                before_count = len(active_df)
+
+                active_df = active_df[~active_df["row_id"].astype(str).isin(selected_ids)].copy()
+                after_count = len(active_df)
+
+                st.session_state[target_key] = active_df
+
+                if {"sector_confidence", "pdb_confidence", "growth_confidence"}.intersection(active_df.columns):
+                    st.session_state.avg_confidence = {
+                        "sector": float(active_df["sector_confidence"].mean()) if "sector_confidence" in active_df.columns and not active_df.empty else 0.0,
+                        "pdb": float(active_df["pdb_confidence"].mean()) if "pdb_confidence" in active_df.columns and not active_df.empty else 0.0,
+                        "growth": float(active_df["growth_confidence"].mean()) if "growth_confidence" in active_df.columns and not active_df.empty else 0.0,
+                    }
 
                 if delete_and_save_clicked:
                     try:
-                        updated_df.to_csv("hasil_bersih_berita.csv", index=False)
+                        active_df.to_csv("hasil_bersih_berita.csv", index=False)
                     except Exception:
                         pass
-                    st.success("Baris terpilih berhasil dihapus. Hasil bersih siap didownload.")
-                else:
-                    st.success("Semua baris terpilih berhasil dihapus.")
+
+                st.success(f"{before_count - after_count} baris berhasil dihapus.")
                 st.rerun()
 
     confidence_cols = ["sector_confidence", "pdb_confidence", "growth_confidence"]
@@ -909,11 +948,9 @@ else:
     st.markdown("### Download hasil")
     st.caption("Confidence ikut tersimpan di file CSV dan Excel yang didownload.")
 
-    export_df = st.session_state.clean_result_df if not st.session_state.clean_result_df.empty else filtered
-
     download_col1, download_col2 = st.columns(2)
 
-    csv_bytes = export_df.to_csv(index=False).encode("utf-8")
+    csv_bytes = filtered.to_csv(index=False).encode("utf-8")
     with download_col1:
         st.download_button(
             "Download hasil saat ini (CSV)",
@@ -924,7 +961,7 @@ else:
 
     excel_buffer = BytesIO()
     with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
-        export_df.to_excel(writer, index=False, sheet_name="hasil_berita")
+        filtered.to_excel(writer, index=False, sheet_name="hasil_berita")
     excel_buffer.seek(0)
 
     with download_col2:
@@ -935,5 +972,11 @@ else:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
-    if not st.session_state.clean_result_df.empty:
-        st.caption(f"Hasil bersih siap diunduh: {len(st.session_state.clean_result_df)} baris.")
+    if delete_and_save_clicked if 'delete_and_save_clicked' in locals() else False:
+        clean_csv_bytes = df_show.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            "Download hasil bersih (CSV)",
+            data=clean_csv_bytes,
+            file_name="hasil_bersih_berita.csv",
+            mime="text/csv",
+        )
