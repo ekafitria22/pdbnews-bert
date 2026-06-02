@@ -171,7 +171,94 @@ SELECTION_KEYWORDS = [
     "q to q", "q1", "q2", "q3", "q4",
     "pertumbuhan kumulatif", "c-to-c", "cumulative", "tahun berjalan",
     "semester pertama", "semester kedua", "setengah tahun", "kumulatif", "tahun penuh",
-    "ctoc", "c to c", "cumulative on cumulative"
+    "ctoc", "c to c", "cumulative on cumulative",
+
+    "tumbuh", "ekonomi", "produk domestik bruto", "pdb", "gdp", "produk nasional bruto", "ekonomi nasional",
+    "inflasi", "deflasi", "konsumsi rumah tangga", "investasi", "suku bunga", "indeks ekonomi", "produktivitas",
+    "tenaga kerja", "pasar tenaga kerja", "sektor", "bangun ekonomi", "fiskal", "moneter", "bangun", "stimulus ekonomi",
+    "uang", "krisis ekonomi", "resesi", "dunia", "global", "kawasan", "stabilitas", "nilai tukar", "surplus",
+    "defisit", "indeks harga", "neraca dagang", "capai", "miskin", "per kapita", "harga", "angka", "anggur",
+     
+     # Pertanian
+    "tani", "tanam", "pangan", "ikan", "laut", "nelayan", "sawit", "padi", "buah",
+    "jagung", "kedelai", "gandum", "ubi", "sayuran", "tanaman pangan", "biji", "pokok", "hortikultura",
+    "sayur", "cabai", "tomat", "bawang", "hias", "kelapa", "pepaya", "sawit", "kopi", "teh", "kakao", 
+    "kelapa", "karet", "gula", "kebun", "ternak", "sapi", "kambing", "ayam", "unggas", "domba", 
+    "domba", "rph", "potong hewan", "sembelih", "jasa tani", "buru", "hasil tani", "produk tani", 
+    "daging", "bibit", "hutan", "tebang", "kayu", "kayu bulat", "panglong", "kayu lapis", "hutan lindung", 
+    "hutan tropis", "reboisasi", "madu hutan", "walet", "akasia", "budidaya", "nelayan", "tangkap", 
+    "tambak", "pancing", "udang", "lobster", "tembakau", "buahbuahan",
+    
+    "tambang", "eksplorasi", "mineral", "gali", "sda", "sumber daya alam", "minyak bumi", "sumur minyak", 
+    "panas bumi", "ladang gas", "minyak", "rig", "bor", "energi panas", "kilang minyak", "batu", "batu bara",
+    "bara", "kerikil", "lignit", "bijih", "bijih besi", "besi", "logam", "tembaga", "nikel", "emas", "perak",
+    "freeport", "pertamina", "ekstraksi", "smelter", "hilirisasi", "kapur", "gamping", "marmer", "pasir",
+    "granit", "esdm", "baja", "aluminium",
+    
+    "olah", "pabrik", "barang", "industri", "tekstil", "olah makanan", "produktivitas", 
+    "tenaga kerja", "pasar tenaga kerja", "sektor", "minyak sawit", "kelapa sawit", "kopra", "rokok", "cerutu", 
+    "olah tembakau", "industri tekstil", "pakai jadi", "kain", "garmen", "kulit", "alas kaki", "sepatu", "tas",
+    "bambu", "rotan", "anyaman", "kertas", "produk kertas", "cetak", "kimia", "farmasi", "obat", "karet", 
+    "plastik", "sintetis", "komputer", "elektronik", "optik", "mesin", "alat", "sepeda motor", "furnitur", 
+    "mebel", "perabot", "reparasi",
+
+    "listrik", "energi", "transmisi", "distribusi", "tenaga", "pln", "bangkit", "gas", "gas alam", "pipa gas", 
+    "kilang gas", "stasiun gas", "kelola", "energi baru", "energi fosil",
+
+    "air", "pdam", "air bersih", "sedia air", "sumber air", "distribusi air", "olah air", "manajemen air", 
+    "sistem air", "air minum", "akses air", "air tanah", "sampah", "kelola sampah", "kumpul sampah", "sampah organik", 
+    "sampah plastik", "tempat sampah", "sampah rumah tangga", "buang sampah", "pilah sampah", "pusat sampah", "daur ulang",
+    "tpa", "limbah padat", "limbah cair", "limbah", "kelola limbah", "buang limbah", "buang",
+
+  
+    "infrastruktur", "bangun", "gedung", "jalan", "tol", "konstruksi", "proyek", "rumah", "jembatan", "bendung",
+    "waduk", "jasa konstruksi", "kontraktor", "teknik sipil", "rancang", "ikn",
+
+    "pasar", "dagang", "grosir", "eceran", "umkm", "menengah", "mikro", 
+    "harga", "global", "kawasan", "neraca dagang", "nilai tukar", "konsumsi rumah tangga",
+    "indeks harga", 'belanja', 'ritel',
+
+    "angkut", "simpan", "kirim", "transportasi", "udara", "darat", "pesawat", "kapal", "kereta api",
+    "bis", "bus", "bus kota", "angkot", "mrt", "lrt", "krl", "busway", "transjakarta", "kereta api", "tiket",
+    "bandara", "stasiun", "terminal", "labuh", "mobil", "truk", "asdp", "transit", "maskapai", "terbang", 
+    "logistik", "kirim", "distribusi", "gudang", "kurir", "port", "halte", "gudang", "simpan", "warehouse", 
+    "gudang barang", "rel", "feri", "seberang", "tumpang", "okupansi", "pos", "agen", "jnt", "jne", "libur",
+    "ojek", "ojol", "opang", "ojek online",
+
+    "akomodasi", "makan", "minum", "hotel", "restoran", "inap", "katering", "rumah makan", "hostel", "homestay",
+    "kafe", "warung", "kedai", "dapur", "pesan antar", "siap saji", "delivery", "resor", "villa", "wisata", "pariwisata",
+    
+    "informasi", "telepon", "telekomunikasi", "media", "komunikasi", "internet", "teknologi", "berita", 
+    "siar", "media sosial", "platform", "digital", "TI", "IT", "sistem informasi", "aplikasi", "perangkat lunak", 
+    "software", "cloud", "data center", "komputasi", "telepon", "seluler", "jaringan", "seluler", "nirkabel", 
+    "satelit", "radio", "televisi", "pulsa",
+
+    "asuransi", "bank", "pasar modal", "modal", "deposito", "bunga", "uang", "pinjam", "simpan", 
+    "ekonomi", "produk domestik bruto", "pdb", "gdp", "produk nasional bruto", 
+    "ekonomi nasional", "investasi", "suku bunga", "indeks ekonomi", "stabilitas", 
+    "nilai tukar", "neraca dagang", "angka", "moneter", "fiskal",
+
+    "properti", "aset", "real estat", "huni", "apartemen", "rumah", "rumah susun", "kontrak", 
+    "kantor", "developer",
+
+    "riset", "kembang", "konsultan", "bisnis", "jasa hukum", "profesional", "ilmu", "teknis", 
+    "intelektual", "konsultasi", "jasa hukum", "layan hukum", "advokat", "notaris", "administrasi", 
+    "korporat", "korposari",
+
+    "layan publik", "perintah pusat", "perintah daerah", "kantor", "apbd", "apbn", "anggaran", "administrasi",
+    "birokrasi", "militer", "tentara", "tni", "polisi", "polri", "aparat", "intelijen", "jamsos", "asuransi", 
+    "bpjs", "pensiun", "jaminan pekerjaan"
+
+    "didik tinggi", "formal", "didik", "siswa", "murid", "guru", "sekolah", "universitas", "guru tinggi", 
+    "kursus", "bimbing", "seminar", "workshop", "vokasi",
+
+    "rumah sakit", "medis", "sehat", "sosial", "medis", "perawat", "klinik", "puskesmas", "dokter", 
+    "tenaga medis", "rsud", "bantu", "dana sosial", "rehabilitasi", "asuh",
+
+    "seni", "hibur", "rekreasi", "layanan", "lainnya", "seni rupa", "musik", "tari", "film", "konser", "lukis",
+    "teater", "event", "eo", "organizer", "art", "pembantu", "badan internasional", "organisasi internasional", 
+    "organisasi global", "PBB",
+
 ]
 
 def fmt_ddmmyyyy(d):
