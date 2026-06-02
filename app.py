@@ -12,7 +12,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from huggingface_hub import hf_hub_download
-from st_aggrid import AgGrid, GridOptionsBuilder
+from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
 
 from utils.constants import APP_TITLE, CATEGORY_SITEID, KEYWORD_HINT
 from utils.scraper_detik import scrape_detik_search
@@ -812,13 +812,39 @@ else:
     else:
         filtered["pdb_label_color"] = ""
 
+    # Normalisasi URL berita agar bisa dibuka sebagai link
+    if "article_url" in filtered.columns:
+        def normalize_article_url(url):
+            if pd.isna(url):
+                return ""
+
+            url = str(url).strip()
+
+            if url.lower() in ["", "nan", "none", "null"]:
+                return ""
+
+            if not url.startswith(("http://", "https://")):
+                url = "https://" + url
+
+            return url
+
+        filtered["article_url"] = filtered["article_url"].apply(normalize_article_url)
+
     cols_to_show = [
         "row_id",
-        "title", "publish_date", "source",
-        "segment_source", "sector_label_emoji", "sector_confidence",
-        "pdb_label_color", "pdb_confidence",
-        "growth_label", "growth_confidence"
+        "title",
+        "publish_date",
+        "source",
+        "article_url",
+        "segment_source",
+        "sector_label_emoji",
+        "sector_confidence",
+        "pdb_label_color",
+        "pdb_confidence",
+        "growth_label",
+        "growth_confidence",
     ]
+
     cols_to_show = [c for c in cols_to_show if c in filtered.columns]
     view_df = filtered[cols_to_show].reset_index(drop=True)
 
@@ -833,6 +859,47 @@ else:
 
     if "row_id" in view_df.columns:
         gb.configure_column("row_id", hide=True)
+
+    # Buat kolom article_url menjadi link clickable
+    if "article_url" in view_df.columns:
+        url_cell_renderer = JsCode("""
+        class UrlCellRenderer {
+            init(params) {
+                this.eGui = document.createElement('a');
+
+                const url = params.value;
+
+                if (url && String(url).trim() !== "") {
+                    this.eGui.innerText = "Buka berita";
+                    this.eGui.setAttribute("href", url);
+                    this.eGui.setAttribute("target", "_blank");
+                    this.eGui.setAttribute("rel", "noopener noreferrer");
+                    this.eGui.style.color = "#1f77b4";
+                    this.eGui.style.textDecoration = "underline";
+                    this.eGui.style.cursor = "pointer";
+
+                    this.eGui.addEventListener("click", function(event) {
+                        event.stopPropagation();
+                    });
+                } else {
+                    this.eGui.innerText = "-";
+                }
+            }
+
+            getGui() {
+                return this.eGui;
+            }
+        }
+        """)
+
+        gb.configure_column(
+            "article_url",
+            header_name="URL",
+            cellRenderer=url_cell_renderer,
+            width=130,
+            sortable=False,
+            filter=False,
+        )
 
     gb.configure_selection(
         selection_mode="multiple",
@@ -858,6 +925,7 @@ else:
         fit_columns_on_grid_load=True,
         theme="streamlit",
         key="hasil_berita_grid",
+        allow_unsafe_jscode=True,
     )
 
     selected_rows = grid_response.get("selected_rows", [])
@@ -919,12 +987,24 @@ else:
 
         st.markdown("### Rata-rata Confidence Prediksi")
         c1, c2, c3 = st.columns(3)
+
         with c1:
-            st.metric("Category", f"{avg_sector_filtered:.2%}" if avg_sector_filtered is not None and pd.notna(avg_sector_filtered) else "-")
+            st.metric(
+                "Category",
+                f"{avg_sector_filtered:.2%}" if avg_sector_filtered is not None and pd.notna(avg_sector_filtered) else "-"
+            )
+
         with c2:
-            st.metric("Movement", f"{avg_pdb_filtered:.2%}" if avg_pdb_filtered is not None and pd.notna(avg_pdb_filtered) else "-")
+            st.metric(
+                "Movement",
+                f"{avg_pdb_filtered:.2%}" if avg_pdb_filtered is not None and pd.notna(avg_pdb_filtered) else "-"
+            )
+
         with c3:
-            st.metric("Growth", f"{avg_growth_filtered:.2%}" if avg_growth_filtered is not None and pd.notna(avg_growth_filtered) else "-")
+            st.metric(
+                "Growth",
+                f"{avg_growth_filtered:.2%}" if avg_growth_filtered is not None and pd.notna(avg_growth_filtered) else "-"
+            )
 
     with st.expander("Preview teks yang dipakai untuk processing"):
         preview_cols = [
@@ -938,6 +1018,7 @@ else:
                 "text_for_processing",
             ] if c in filtered.columns
         ]
+
         if preview_cols:
             st.dataframe(filtered[preview_cols].head(5), width="stretch")
 
